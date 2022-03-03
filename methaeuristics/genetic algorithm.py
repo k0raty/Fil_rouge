@@ -9,10 +9,10 @@ class GeneticAlgorithm:
     PENALTY: int = 2
     POPULATION_SIZE = 10
 
-    def __init__(self, max_iteration, nbr_of_site):
+    def __init__(self, max_iteration=15, nbr_of_sites=10):
         self.MAX_ITERATION = max_iteration
-        self.NBR_OF_SITE = nbr_of_site
-        self.COST_MATRIX = np.random.randint(1, 20, size=(nbr_of_site, nbr_of_site))
+        self.NBR_OF_SITES = nbr_of_sites
+        self.COST_MATRIX = np.random.randint(1, 20, size=(nbr_of_sites, nbr_of_sites))
 
     def main(self):
         # Initialization
