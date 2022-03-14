@@ -1,5 +1,6 @@
 class Customer:
     KEYS = [
+        'CUSTOMER_ID',
         'ROUTE_ID',
         'CUSTOMER_NUMBER',
         'CUSTOMER_CODE',

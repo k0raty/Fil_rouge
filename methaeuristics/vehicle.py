@@ -1,6 +1,7 @@
 class Vehicle:
     KEYS = [
-        'ROUTE_ID, VEHICLE_NUMBER',
+        'ROUTE_ID',
+        'VEHICLE_NUMBER',
         'VEHICLE_CODE',
         'VEHICLE_TOTAL_WEIGHT_KG',
         'VEHICLE_TOTAL_VOLUME_M3',

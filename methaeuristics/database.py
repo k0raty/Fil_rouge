@@ -38,3 +38,6 @@ class Database:
             for row in csv_reader:
                 new_vehicle = Vehicle(row)
                 self.Vehicles.append(new_vehicle)
+
+        message = 'Read {} customers, {} depots, and {} vehicles from the database'
+        print(message.format(len(self.Customers), len(self.Depots), len(self.Vehicles)))
