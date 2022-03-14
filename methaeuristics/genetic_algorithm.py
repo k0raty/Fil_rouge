@@ -1,25 +1,45 @@
 import random as rd
 import numpy as np
+import matplotlib.pyplot as ppt
+from math import pi, cos, sqrt, asin
 
 
 class GeneticAlgorithm:
     PROBA_CROSSING = 0.8
-    PROBA_MUTATION = 0.25
     TOURNAMENT_SIZE = 3
     PENALTY: int = 2
-    POPULATION_SIZE = 10
+    POPULATION_SIZE = 50
+    MAX_ITERATION = 50
 
-    def __init__(self, max_iteration=15, nbr_of_sites=10):
-        self.MAX_ITERATION = max_iteration
+    def __init__(self, customers, depots, vehicles):
+        nbr_of_sites = len(customers)
+        cost_matrix = np.zeros((nbr_of_sites, nbr_of_sites))
+
+        for i in range(nbr_of_sites):
+            customer_i = customers[i]
+
+            for j in range(nbr_of_sites):
+                customer_j = customers[j]
+                lat_i = float(customer_i.CUSTOMER_LATITUDE)
+                lon_i = float(customer_i.CUSTOMER_LONGITUDE)
+                lat_j = float(customer_j.CUSTOMER_LATITUDE)
+                lon_j = float(customer_j.CUSTOMER_LONGITUDE)
+
+                cost_matrix[i, j] = self.distance(lat_i, lon_i, lat_j, lon_j)
+
+        self.COST_MATRIX = cost_matrix
         self.NBR_OF_SITES = nbr_of_sites
-        self.COST_MATRIX = np.random.randint(1, 20, size=(nbr_of_sites, nbr_of_sites))
+        self.PROBA_MUTATION = 1 / nbr_of_sites
+        self.Customers = customers
+        self.Vehicles = vehicles[0]
 
     def main(self):
         # Initialization
         iteration = 0
         population = self.generate_population()
+        fitness_history = []
 
-        while iteration < self.MAX_ITERATION:
+        while iteration < self.MAX_ITERATION and self.fitness_change(fitness_history):
             iteration += 1
 
             """ Choose the individuals that survive from the previous generation """
@@ -63,7 +83,10 @@ class GeneticAlgorithm:
                 individual = population[index]
                 fitness_sum += self.fitness(individual)
 
+            fitness_history.append(fitness_sum)
             print('Iteration {}, fitness sum {}'.format(iteration, fitness_sum))
+
+        self.draw_fitness(iteration, fitness_history)
 
     """
     Use a stochastic method ("Technique de la roulette") to select individuals from the current generation
@@ -175,7 +198,23 @@ class GeneticAlgorithm:
         population = []
         seed = range(self.NBR_OF_SITES)
 
-        for index_individual in range(self.POPULATION_SIZE):
+        weight = 0
+        volume = 0
+
+        sub_route = []
+
+        for index_customer in range(self.POPULATION_SIZE):
+            customer = self.Customers[index_customer]
+
+            weight += customer.TOTAL_WEIGHT_KG
+            volume += customer.TOTAL_VOLUME_M3
+
+            if (weight > self.Vehicles.VEHICLE_TOTAL_WEIGHT_KG
+                    or volume > self.Vehicles.VEHICLE_TOTAL_VOLUME_M3):
+                individual.append(sub_route)
+                weight = 0
+                volume = 0
+
             individual = rd.sample(seed, k=self.NBR_OF_SITES)
             population.append(individual)
 
@@ -184,3 +223,25 @@ class GeneticAlgorithm:
     @staticmethod
     def nbr_of_vehicles(individual: list) -> int:
         return len(individual)
+
+    @staticmethod
+    def distance(lat_1: float, lon_1: float, lat_2: float, lon_2: float) -> float:
+        deg_2_rad = pi / 180
+        a = 0.5 - cos((lat_2 - lat_1) * deg_2_rad) / 2
+        b = cos(lat_1 * deg_2_rad) * cos(lat_2 * deg_2_rad) * (1 - cos((lon_2 - lon_1) * deg_2_rad)) / 2
+        r_earth = 6371
+        return 2 * r_earth * asin(sqrt(a + b))
+
+    @staticmethod
+    def fitness_change(history):
+        if len(history) < 5:
+            return True
+        if history[-1] == history[-2] and history[-1] == history[-3]:
+            return False
+        return True
+
+    @staticmethod
+    def draw_fitness(iteration, history):
+        ppt.close()
+        ppt.plot(range(iteration), history)
+        ppt.show()
