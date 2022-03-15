@@ -7,7 +7,7 @@ class Customer:
     CUSTOMER_LONGITUDE: float = 0
     CUSTOMER_TIME_WINDOW_FROM_MIN: int = 8
     CUSTOMER_TIME_WINDOW_TO_MIN: int = 15
-    NUMBER_OF_ARTICLES: int = 1
+    NUMBER_OF_ARTICLES: float = 1
     TOTAL_WEIGHT_KG: float = 1
     TOTAL_VOLUME_M3: float = 1
     CUSTOMER_DELIVERY_SERVICE_TIME_MIN: float = 1
@@ -21,7 +21,7 @@ class Customer:
         self.CUSTOMER_LONGITUDE = float(row[5])
         self.CUSTOMER_TIME_WINDOW_FROM_MIN = int(row[6])
         self.CUSTOMER_TIME_WINDOW_TO_MIN = int(row[7])
-        self.NUMBER_OF_ARTICLES = int(row[8])
+        self.NUMBER_OF_ARTICLES = float(row[8])
         self.TOTAL_WEIGHT_KG = float(row[9])
         self.TOTAL_VOLUME_M3 = float(row[10])
         self.CUSTOMER_DELIVERY_SERVICE_TIME_MIN = float(row[11])

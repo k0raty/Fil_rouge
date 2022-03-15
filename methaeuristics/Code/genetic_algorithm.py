@@ -2,6 +2,7 @@ import random as rd
 import numpy as np
 from math import pi, cos, sqrt, asin, floor
 
+from seaborn import color_palette
 import matplotlib.pyplot as plt
 import matplotlib.lines as lines
 
@@ -38,6 +39,7 @@ class GeneticAlgorithm:
                 cost_matrix[i, j] = self.distance(lat_i, lon_i, lat_j, lon_j)
 
         self.COST_MATRIX = cost_matrix
+        self.NBR_OF_VEHICLES = len(self.Database.Vehicles)
         self.NBR_OF_SITES = nbr_of_sites
         self.PROBA_MUTATION = 1 / nbr_of_sites
 
@@ -310,46 +312,52 @@ class GeneticAlgorithm:
     
     :param solution: list - an individual of the population with the lowest fitness score
     """
-    @staticmethod
-    def draw_solution(solution, filepath):
+    def draw_solution(self, solution, filepath):
         plt.figure(figsize=[25, 15])
+
+        plt.plot(self.Depots[0].DEPOT_LATITUDE, self.Depots[0].DEPOT_LONGITUDE, 'rs')
+
+        vehicle_working = 0
+
+        colors = color_palette(n_colors=self.NBR_OF_VEHICLES)
 
         latitudes = []
         longitudes = []
-        depots_latitudes = []
-        depots_longitudes = []
-
-        for site in solution:
-            if type(site).__name__ == 'Customer':
-                latitudes.append(float(site.CUSTOMER_LATITUDE))
-                longitudes.append(float(site.CUSTOMER_LONGITUDE))
-            elif type(site).__name__ == 'Depot':
-                latitude = float(site.DEPOT_LATITUDE)
-                latitudes.append(latitude)
-                depots_latitudes.append(latitude)
-
-                longitude = float(site.DEPOT_LONGITUDE)
-                longitudes.append(longitude)
-                depots_longitudes.append(longitude)
-
-        plt.plot(latitudes, longitudes,
-                 marker='o',
-                 markerfacecolor='blue',
-                 markeredgecolor='blue',
-                 linestyle='solid',
-                 linewidth=0.5,
-                 color='green',
-                 )
-
-        plt.plot(depots_latitudes, depots_longitudes, 'rs')
 
         for index_site in range(len(solution)):
-            plt.annotate("{}".format(index_site),
-                         (latitudes[index_site], longitudes[index_site]),
-                         textcoords="offset points",
-                         xytext=(0, 10),
-                         ha='center',
+            site = solution[index_site]
+
+            if type(site).__name__ == 'Customer':
+                latitudes.append(site.CUSTOMER_LATITUDE)
+                longitudes.append(site.CUSTOMER_LONGITUDE)
+
+                plt.annotate("{}".format(index_site),
+                             (site.CUSTOMER_LATITUDE, site.CUSTOMER_LONGITUDE),
+                             textcoords="offset points",
+                             xytext=(0, 10),
+                             ha='center',
+                             )
+            elif type(site).__name__ == 'Depot':
+                latitudes.append(site.DEPOT_LATITUDE)
+                longitudes.append(site.DEPOT_LONGITUDE)
+
+                if vehicle_working < self.NBR_OF_VEHICLES - 1:
+                    vehicle_working += 1
+                else:
+                    vehicle_working = 0
+
+                color = colors[vehicle_working]
+
+                plt.plot(latitudes, longitudes,
+                         marker='o',
+                         markerfacecolor='blue',
+                         markeredgecolor='blue',
+                         linestyle='solid',
+                         linewidth=0.5,
+                         color=color,
                          )
+                latitudes = []
+                longitudes = []
 
         plt.xlabel('latitude')
         plt.ylabel('longitude')
@@ -392,6 +400,11 @@ class GeneticAlgorithm:
 
         return 2 * r_earth * asin(sqrt(a + b))
 
+    """
+    Check that the fitness value is still changing, if no then the return will stop the algorithm in the main function
+    
+    :param history: list - the list of all the previous fitness values
+    """
     @staticmethod
     def fitness_change(history):
         if len(history) < 5:
