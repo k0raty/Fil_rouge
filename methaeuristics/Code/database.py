@@ -1,14 +1,14 @@
 from csv import reader
-
+import xlrd as xl
 from customer import Customer
 from vehicle import Vehicle
 from depot import Depot
 
 
 class Database:
-    CUSTOMER_PATH = '../data_PTV_Fil_rouge/table_customers.csv'
-    DEPOT_PATH = '../data_PTV_Fil_rouge/table_depots.csv'
-    VEHICLE_PATH = '../data_PTV_Fil_rouge/table_vehicles.csv'
+    CUSTOMER_PATH = '../../data_PTV_Fil_rouge/table_customers.csv'
+    DEPOT_PATH = '../../data_PTV_Fil_rouge/table_depots.csv'
+    VEHICLE_PATH = '../../data_PTV_Fil_rouge/table_vehicles.csv'
 
     Customers = []
     Vehicles = []
