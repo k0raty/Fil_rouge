@@ -9,13 +9,16 @@ import numpy as np
 import random as rd 
 import networkx as nx
 import pandas as pd 
+from tqdm import tqdm
 import sys
 Q=100
-n=10
+n=15
 alpha=0.1
-adj_matrix = np.random.randint(1, 20, size=(100, 100))
+w=10
+adj_matrix = np.random.randint(1, 20, size=(25, 25))
 np.fill_diagonal(adj_matrix,np.zeros(len(adj_matrix)))
-
+T=1500
+t=200
 def create_G(adj_matrix,Q):
     
     n_max=int((len(adj_matrix)-1)/5) #Le nombre maximum de voitures qu'on mettrai à disposition. 
@@ -90,6 +93,8 @@ def init(G,n,Q):
     Graphs supposés pleins
     
     """
+    max_nodes_ressources=max([G.nodes[i]['demande'] for i in range(0,len(G.nodes))])
+    assert(max_nodes_ressources<Q), "Les ressouces de certaines villes sont plus grandes que les ressources des voitures !"
     assert(n>G.nodes[0]['n_min']),"Peut-importe la configuration , il n'y a pas assez de camion pour terminer le trajet dans le temps imparti (<100)"    
     assert(n<=G.nodes[0]['n_max']),"On demande trop de voiture , <= à %s normalement " %G.nodes[0]['n_max']
     x=[]
@@ -139,6 +144,10 @@ def perturbation(x,Q,G):
     Q: Les ressources de chaque voiture
     
     """
+    assert(check_temps(x,G)==True),"Mauvaise initialisation au niveau du temps dès le début de la perturbation , pas la peine de continuer !"
+    for i in range(0,len(x)):
+        assert(check_ressource(x[i],Q,G)==True),"Mauvaise initialisation au niveau des ressources dès le début de la perturbation , pas la peine de continuer !"    
+    
     very_old_x=copy.deepcopy(x) #Utiliser deepcopy ! et non copy
     K=len(x)
     ajout,retire=rd.randint(0,K-1),rd.randint(0,K-1)
@@ -205,45 +214,85 @@ def perturbation(x,Q,G):
     num_x=sum([len(i) for i in x])
     assert(num_very_old_x==num_x)
     print("x a-il-changé ? :", x!=very_old_x)
-    return very_old_x,x
+    return x
 def energie(x,w,G):
     K= len(x)
-    somme=w*K
     for route in range(0,K):
-        for sommet in range(0,len(x[route])):
-            somme+=G[x[route][sommet]][x[route][sommet+1]]
-        somme+=G[x[route][-1]][0]
+        somme=sum([G[x[route][sommet]][x[route][sommet+1]]['weight'] for sommet in range(0,len(x[route])-1)])
+    somme+=w*K
     return somme
-def recuitsimule(t,x,alpha,Q,G):
-    global T
-    global k
+def recuitsimule(alpha,Q,G,T,t):
     ###Assertions principales###
-    max_nodes_ressources=max([G.nodes[i]['demande'] for i in range(0,len(G.nodes))])
-    assert(max_nodes_ressources<Q), "Les ressouces de certaines villes sont plus grandes que les ressources des voitures !"
-    for (x,y) in np.ndindex(len(G)):
+    X=[]
+    k=1.38*10e-23
+    for (x,y) in np.ndindex(len(G),len(G)):
         if x!=y:
             assert(G.get_edge_data(x,y)['weight'] !=0) , "Certaines routes sont nulles , le graphe n'est pas plein , il faut revoir la matrice d'adjacence !"
     T_old=T
     n_min=G.nodes[0]['n_min']
     n_max=G.nodes[0]['n_max']
-    for i in range(n_min,n_max+1):
+    for i in tqdm(range(n_min+1,n_max+1)): 
         T=T_old
         x=init(G,i,Q)
-        if x!=False:
-            while T >=t-10:
-                new_x=perturbation(x)
-                E=energie(new_x)
-                E0=energie(x)
+        if(x!=False):
+            while T >=t:
+                old_x=copy.deepcopy(x)
+                x=perturbation(x,Q,G)
+                E=energie(x,w,G)
+                E0=energie(old_x,w,G)
                 if E<E0: 
-                    x = copy.deepcopy(new_x)
+                    old_x = copy.deepcopy(x)
                     #plot(x) +Temp
                 else:
                     p=np.exp(-(E-E0)/(k*T))
-                    r=rd.random() #ici c'est rd.random et non rd.randint(0,1) qui renvoit un entier bordel !
+                    r=rd.random() #ici c'est rd.random et non rd.randint(0,1) qui renvoit un entier !
                     if r<= p:
-                        x=copy.deepcopy(new_x)
+                        old_x=copy.deepcopy(x)
                         #plot(x) +Temp
                 T=temperature(T,alpha) 
+            X.append(old_x)
+    best_roads=pd.DataFrame()
+    best_roads['X']=X
+    best_roads['Energie']=[energie(x,w,G) for x in X]
+    best_roads.sort_values(by='Energie',ascending=False)
+    best_roads['n']=[len(best_roads['X'].iloc[i]) for i in range(0,len(best_roads))]
+    return best_roads
+
+def recuitsimule_2(alpha,Q,G,T,t,n):
+    ###Assertions principales###
+    k=1.38*10e-23
+    scores=[]
+    for (x,y) in np.ndindex(len(G),len(G)):
+        if x!=y:
+            assert(G.get_edge_data(x,y)['weight'] !=0) , "Certaines routes sont nulles , le graphe n'est pas plein , il faut revoir la matrice d'adjacence !"
+    T_old=T
+    n_min=G.nodes[0]['n_min']
+    n_max=G.nodes[0]['n_max']
+    
+    T=T_old
+    x=init(G,n,Q)
+    if(x!=False):
+        while T >=t:
+            old_x=copy.deepcopy(x)
+            x=perturbation(x,Q,G)
+            E=energie(x,w,G)
+            E0=energie(old_x,w,G)
+            if E<E0: 
+                old_x = copy.deepcopy(x)
+                scores.append(E)
+                #plot(x) +Temp
+            else:
+                p=np.exp(-(E-E0)/(k*T))
+                r=rd.random() #ici c'est rd.random et non rd.randint(0,1) qui renvoit un entier !
+                if r<= p:
+                    old_x=copy.deepcopy(x)
+                    #plot(x) +Temp
+            T=temperature(T,alpha) 
+    return old_x,scores
+
 G=create_G(adj_matrix,Q)
-x=init(G,n,Q)
-v,x=perturbation(x,Q,G)
+#x=init(G,n,Q)
+#v,x=perturbation(x,Q,G)
+#print(energie(x,w,G))
+#old_x,scores=recuitsimule_2(alpha,Q,G,T,t,n)
+df=recuitsimule(alpha,Q,G,T,t)
