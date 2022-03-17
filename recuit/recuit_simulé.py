@@ -1,9 +1,5 @@
 # -*- coding: utf-8 -*-
-"""
-Spyder Editor
 
-This is a temporary script file.
-"""
 import copy
 import numpy as np
 import random as rd 
@@ -11,6 +7,7 @@ import networkx as nx
 import pandas as pd 
 from tqdm import tqdm
 import math
+import matplotlib.pyplot as plt
  
 Q=100 #Ressources par Camion
 alpha=0.001 #Pas de descente de la température
@@ -18,7 +15,8 @@ w=5 #Pénalité dûe au rajout d'un camion dans la solution
 adj_matrix = np.random.randint(1, 20, size=(25, 25)) #Matrice d'adjacence générérant notre graphique
 np.fill_diagonal(adj_matrix,np.zeros(len(adj_matrix))) 
 T=1500 #Température de départ
-t=200 #Température minimal
+t=200 #Température minimale
+
 def create_G(adj_matrix,Q):
     """
 
@@ -44,11 +42,11 @@ def create_G(adj_matrix,Q):
     for i in range(1,len(adj_matrix)):
         if heure_debut>80: #Intervalles larges
             a=rd.randint(0,40)
-            b=rd.randint(a+1,a+60)
-            dict_g[i]={'demande':rd.randint(0,int(1*Q*n_max/(len(adj_matrix)-1))),'intervalle':[a,b]}
-       
+            b=rd.randint(a+30,a+60)
+            dict_g[i]={'demande':rd.randint(0,int(0.5*Q*n_max/(len(adj_matrix)-1))),'intervalle':[a,b]}
+            #n'hésitez pas à monter la valeur 0.5 aux lignes 46 et 49 pour augmenter les quantités demandées par les clients
         else:
-            dict_g[i]={'demande':rd.randint(1,int(1*Q*n_max/(len(adj_matrix)-1))),'intervalle':[heure_debut,heure_debut+20]} #+2 car il faut au moins 2 d'écart entre deux classes de temps
+            dict_g[i]={'demande':rd.randint(1,int(0.5*Q*n_max/(len(adj_matrix)-1))),'intervalle':[heure_debut,heure_debut+20]} #+2 car il faut au moins 2 d'écart entre deux classes de temps
             if i%n==0: #i toujours différent de 0 , donc le cas i = 0 ne se pose pas
                 heure_debut+=10 #On rajoute 10 unités dès que i est un multiple de n.
                 k+=1
@@ -76,6 +74,9 @@ def create_G(adj_matrix,Q):
     roots=np.roots(p)
     n_min=max(1,int(roots.min())+1) # Nombre de voiture minimal possible , solution d'une équation de second degrès. 
     G.nodes[0]['n_min']=n_min
+    plt.title("graphe initial")
+    plt.show()
+    plt.clf()
     return G
 
 def temperature(T,alpha):
@@ -135,6 +136,7 @@ def check_ressource(route,Q,G):
         if  ressource<0:
             return False
     return True
+
 def init(G,n,Q):
     """
     Fonction d'initialisation du solution possible à n camions. 
@@ -228,7 +230,7 @@ def perturbation(x,Q,G):
     Il y a beaucoup d'assertions afin de vérifier que la perturbation ne crée pas de problème de contraintes.  
        -On prend un sommet d'une route parcourue par un camion pour l'ajouter à une autre route
        -Pour chaque route, on permute deux sommets
-       -Il est possible qu'à chaque étape ,il n'y est pas de modification. 
+       -Il est possible qu'à chaque étape ,il n'y ait pas de modification. 
     Parameters
     ----------
     x : Solution à perturber
@@ -322,6 +324,22 @@ def energie(x,w,G):
     somme+=w*K
     return somme
 
+def plot_graph(x,E,G, final = False):
+    graph_route = nx.DiGraph() #création du nouveau graphe des routes
+    for i in range(0,len(x)):
+        route = x[i]
+        for j in range(0, len(route)-1):
+            graph_route.add_edges_from([(str(route[j]), str(route[j+1]))]) #pour chacune des routes, on ajoute les sommets 
+    colors = [G.nodes[i]['demande'] for i in G.nodes]
+    nx.draw_networkx(graph_route,arrows=True, with_labels=True, node_color =colors, arrowstyle = '-|>', arrowsize = 12) #edge_color = ['red', 'black', 'green']
+    if final == False:
+        graph_label = "Energie du test : " + str(E) + ", nombre de route : " + str(len(x))
+    else:
+        graph_label = "Energie finale : " + str(E) + ", nombre de route optimal : " + str(len(x))
+    plt.title(graph_label)
+    plt.show()
+    plt.clf()
+
 def recuitsimule(alpha,Q,G,T,t):
     """
     
@@ -358,6 +376,8 @@ def recuitsimule(alpha,Q,G,T,t):
         E_min=math.inf
         best_x=nx.empty_graph()
         T=T_old
+        T_list = []
+        E_list = []
         x=init(G,i,Q)
         if(x!=False):
             while T >=t:
@@ -370,6 +390,10 @@ def recuitsimule(alpha,Q,G,T,t):
                     if E<E_min:
                         best_x=copy.deepcopy(x)
                         E_min=E
+                        #plot_graph(x,E,G)
+                        T_list.append(T)
+                        E_list.append(E)
+                        print(x)
                     if E<E_min_X:
                         best_X=copy.deepcopy(x)
                         E_min_X=E
@@ -378,14 +402,26 @@ def recuitsimule(alpha,Q,G,T,t):
                     r=rd.random() #ici c'est rd.random et non rd.randint(0,1) qui renvoit un entier !
                     if r<= p:
                         old_x=copy.deepcopy(x)
+                        #plot_graph(x,E,G)
+                        T_list.append(T)
+                        E_list.append(E)
                 T=temperature(T,alpha) 
             X.append(best_x)
+            #Tracé du graphe de l'énergie en fonction de la température
+            plt.plot(T_list, E_list, linestyle='', linewidth = 3,
+                     marker='x', markerfacecolor='black', markersize=8)
+            plt.title("Energie en fonction de la température pour " + str(i) + " routes")
+            plt.xlabel('Température')
+            plt.ylabel('Energie')
+            plt.show()
+            plt.clf()
     best_roads=pd.DataFrame()
     best_roads['X']=X
     best_roads['Energie']=[energie(x,w,G) for x in X]
-    best_roads=best_roads.sort_values(by='Energie',ascending=True)
+    best_roads=best_roads.sort_values(by='Energie',ascending=True, ignore_index=True)
     best_roads['n']=[len(best_roads['X'].iloc[i]) for i in range(0,len(best_roads))]
     assert(energie(best_X,w,G)==min(list(best_roads['Energie']))) # On vérifie qu'on prend bien la meilleure solution
+    plot_graph(best_roads['X'][0], best_roads['Energie'][0], G, True)
     return best_roads,best_X
 
 def recuitsimule_2(alpha,Q,G,T,t,n):
@@ -518,5 +554,8 @@ def vide_stock(x,stock,df_route):
                 assert(route_a_remplir<len(df_route)) ,"Impossible d'initialiser le graph, il faut revoir les ressources et intervalles"
     assert(extra_node==len(stock)),"Impossible d'initialiser le graph,on ne peut pas vider le stock, il faut revoir les ressources et intervalles"
     return x
+
 G=create_G(adj_matrix,Q)
 best_roads,best_X=recuitsimule(alpha,Q,G,T,t)
+
+#ıdict(G.nodes)
