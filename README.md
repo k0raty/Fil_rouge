@@ -1,4 +1,14 @@
-# Fil_rouge
-Fil rouge pour ICO
-3 algorithmes de métaheuristiques à implémenter.
-Recuit simulé : Antony et Floriane. 
+# Fil rouge pour l'électif ICO
+
+## 1st step : metaheuristics
+
+### Tabou algorithm
+
+### Recuit simulé
+
+By Antony and Floriane. 
+
+### Genetic algorithm
+
+By Flavien and Alexandre
+
