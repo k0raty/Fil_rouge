@@ -315,8 +315,6 @@ class GeneticAlgorithm:
     def draw_solution(self, solution, filepath):
         plt.figure(figsize=[25, 15])
 
-        plt.plot(self.Depots[0].DEPOT_LATITUDE, self.Depots[0].DEPOT_LONGITUDE, 'rs')
-
         vehicle_working = 0
 
         colors = color_palette(n_colors=self.NBR_OF_VEHICLES)
@@ -358,6 +356,8 @@ class GeneticAlgorithm:
                          )
                 latitudes = []
                 longitudes = []
+
+        plt.plot(self.Depots[0].DEPOT_LATITUDE, self.Depots[0].DEPOT_LONGITUDE, 'rs')
 
         plt.xlabel('latitude')
         plt.ylabel('longitude')
