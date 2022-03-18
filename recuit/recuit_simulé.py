@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Antony davi et Florianne Ronzon.
+Antony davi et Floriane Ronzon.
 """
 import copy
 import numpy as np
