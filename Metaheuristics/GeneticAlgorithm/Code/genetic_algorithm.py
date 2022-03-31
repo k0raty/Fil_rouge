@@ -1,15 +1,12 @@
 import random as rd
 import numpy as np
-from math import pi, cos, sqrt, asin, floor
-
+from math import floor
 from seaborn import color_palette
 import matplotlib.pyplot as plt
 import matplotlib.lines as lines
 
 import time
 import os
-
-from database import Database
 
 
 class GeneticAlgorithm:
@@ -19,9 +16,9 @@ class GeneticAlgorithm:
     POPULATION_SIZE = 50
     MAX_ITERATION = 50
 
-    def __init__(self):
+    def __init__(self, database):
         self.solution = None
-        self.Database = Database()
+        self.Database = database
 
         nbr_of_sites = len(self.Database.Customers)
         cost_matrix = np.zeros((nbr_of_sites, nbr_of_sites))
@@ -48,12 +45,12 @@ class GeneticAlgorithm:
         self.Vehicles = self.Database.Vehicles[0]
 
     """
-    Run the genetic algorithm
+    Run the GeneticAlgorithm
     """
-    def main(self):
+    def main(self, initial_solution=None):
         plt.close('all')
         timestamp = floor(time.time())
-        path = os.path.join('..', 'Graphs', 'test_{}'.format(timestamp))
+        path = os.path.join('../..', 'Graphs', 'test_{}'.format(timestamp))
         os.mkdir(path)
 
         iteration = 0
@@ -391,14 +388,6 @@ class GeneticAlgorithm:
     def nbr_of_vehicles(individual: list) -> int:
         return len(individual)
 
-    @staticmethod
-    def distance(lat_1: float, lon_1: float, lat_2: float, lon_2: float) -> float:
-        deg_2_rad = pi / 180
-        a = 0.5 - cos((lat_2 - lat_1) * deg_2_rad) / 2
-        b = cos(lat_1 * deg_2_rad) * cos(lat_2 * deg_2_rad) * (1 - cos((lon_2 - lon_1) * deg_2_rad)) / 2
-        r_earth = 6371
-
-        return 2 * r_earth * asin(sqrt(a + b))
 
     """
     Check that the fitness value is still changing, if no then the return will stop the algorithm in the main function
