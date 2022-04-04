@@ -9,10 +9,10 @@ import os
 
 """ Import utilities """
 from Utility.database import Database
-from Utility.common import compute_cost_matrix, distance
-
+from Utility.common import compute_cost_matrix, distance  # , fitness
 
 os.chdir(os.path.join('..', '..'))
+
 
 class GeneticAlgorithm:
     PROBA_CROSSING: float = 0.8
@@ -244,23 +244,12 @@ class GeneticAlgorithm:
             if class_name_from != 'Depot' and class_name_to != 'Depot':
                 travel_cost += self.COST_MATRIX[int(site_from.CUSTOMER_ID), int(site_to.CUSTOMER_ID)]
 
-            elif class_name_from == 'Depot' and class_name_to == 'Depot':
-                continue
-
-            elif class_name_from == 'Depot':
+            else:
                 travel_cost += distance(
-                    float(site_to.CUSTOMER_LATITUDE),
-                    float(site_to.CUSTOMER_LONGITUDE),
-                    float(site_from.DEPOT_LATITUDE),
-                    float(site_from.DEPOT_LONGITUDE),
-                )
-
-            elif class_name_to != 'Depot':
-                travel_cost += distance(
-                    float(site_from.CUSTOMER_LATITUDE),
-                    float(site_from.CUSTOMER_LONGITUDE),
-                    float(site_to.DEPOT_LATITUDE),
-                    float(site_to.DEPOT_LONGITUDE),
+                    float(site_to.LATITUDE),
+                    float(site_to.LONGITUDE),
+                    float(site_from.LATITUDE),
+                    float(site_from.LONGITUDE),
                 )
 
         return vehicle_cost + travel_cost

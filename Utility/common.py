@@ -32,6 +32,9 @@ and the cost from one site to the next one
 
 def fitness(solution: list, cost_matrix) -> float:
     travel_cost = 0
+    penalty = 5
+    nbr_of_vehicle = 1
+    vehicle_cost = penalty * nbr_of_vehicle
 
     nbr_of_stop = len(solution)
 
@@ -45,29 +48,23 @@ def fitness(solution: list, cost_matrix) -> float:
         if class_name_from != 'Depot' and class_name_to != 'Depot':
             travel_cost += cost_matrix[int(site_from.CUSTOMER_ID), int(site_to.CUSTOMER_ID)]
 
-        elif class_name_from == 'Depot':
+        else:
             travel_cost += distance(
-                float(site_to.CUSTOMER_LATITUDE),
-                float(site_to.CUSTOMER_LONGITUDE),
-                float(site_from.DEPOT_LATITUDE),
-                float(site_from.DEPOT_LONGITUDE),
+                float(site_from.LATITUDE),
+                float(site_from.LONGITUDE),
+                float(site_to.LATITUDE),
+                float(site_to.LONGITUDE),
             )
 
-        elif class_name_to != 'Depot':
-            travel_cost += distance(
-                float(site_from.CUSTOMER_LATITUDE),
-                float(site_from.CUSTOMER_LONGITUDE),
-                float(site_to.DEPOT_LATITUDE),
-                float(site_to.DEPOT_LONGITUDE),
-            )
-
-    return travel_cost
+    return travel_cost + vehicle_cost
 
 
 """
 Fill a matrix storing the cost of the travel between every customers
 
 :param customers: list - the list of customers with their coordinates
+:return cost_matrix: np.array - a matrix containing in a cell (i, j) the distance of the travel between
+site i and j
 """
 
 
@@ -80,10 +77,10 @@ def compute_cost_matrix(customers: list):
 
         for j in range(nbr_of_customer):
             customer_j = customers[j]
-            lat_i = float(customer_i.CUSTOMER_LATITUDE)
-            lon_i = float(customer_i.CUSTOMER_LONGITUDE)
-            lat_j = float(customer_j.CUSTOMER_LATITUDE)
-            lon_j = float(customer_j.CUSTOMER_LONGITUDE)
+            lat_i = float(customer_i.LATITUDE)
+            lon_i = float(customer_i.LONGITUDE)
+            lat_j = float(customer_j.LATITUDE)
+            lon_j = float(customer_j.LONGITUDE)
 
             cost_matrix[i, j] = distance(lat_i, lon_i, lat_j, lon_j)
 

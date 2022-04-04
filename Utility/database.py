@@ -16,14 +16,13 @@ class Database:
     Depots = []
 
     def __init__(self):
+        self.CUSTOMER_PATH = os.path.join('Dataset', 'Tables', 'table_customers_v1.csv')
+        self.DEPOT_PATH = os.path.join('Dataset', 'Tables', 'table_depots.csv')
+        self.VEHICLE_PATH = os.path.join('Dataset', 'Tables', 'table_vehicles.csv')
 
-        self.CUSTOMER_PATH = os.path.join('Dataset', 'table_customers.csv')
-        self.DEPOT_PATH = os.path.join('Dataset', 'table_depots.csv')
-        self.VEHICLE_PATH = os.path.join('Dataset', 'table_vehicles.csv')
+        self.refresh()
 
-        self.refreh()
-
-    def refreh(self):
+    def refresh(self):
         print('current path', os.getcwd())
         self.Customers = []
         self.Vehicles = []
