@@ -1,4 +1,4 @@
 .idea
-Metaheuristics/GeneticAlgorithm/Graphs
+**/Graphs
 **/__pycache__
 **/.DS_store

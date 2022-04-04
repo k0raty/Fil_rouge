@@ -9,7 +9,7 @@ import os
 
 """ Import utilities """
 from Utility.database import Database
-from Utility.common import compute_cost_matrix, distance  # , fitness
+from Utility.common import compute_cost_matrix, distance, classe  # , fitness
 
 os.chdir(os.path.join('..', '..'))
 
@@ -49,7 +49,7 @@ class GeneticAlgorithm:
     def main(self, initial_solution=None):
         plt.close('all')
         timestamp = floor(time.time())
-        path = os.path.join('..', 'Graphs', 'test_{}'.format(timestamp))
+        path = os.path.join('Metaheuristics', 'GeneticAlgorithm', 'Graphs', 'test_{}'.format(timestamp))
         os.mkdir(path)
 
         iteration = 0
@@ -111,7 +111,7 @@ class GeneticAlgorithm:
             filepath = os.path.join(path, 'img_{}.png'.format(iteration))
             self.draw_solution(solution, filepath)
 
-        self.draw_fitness(iteration, fitness_history, filepath)
+        self.draw_fitness(iteration, fitness_history, path)
 
         return self.solution, self.fitness(self.solution)
 
@@ -140,8 +140,8 @@ class GeneticAlgorithm:
     Then remove the weakest
     Finally randomly select individuals to generate the new population of the same size
 
-    @param{list} population - current population
-    @return{list} selected population
+    :param population: list - current population
+    :return population_survivors: list - selected population
     """
     def determinist_selection(self, population: list) -> list:
         population_survivors = sorted(population, key=lambda x: self.fitness(x))
@@ -194,8 +194,8 @@ class GeneticAlgorithm:
     """
     Apply a mutation to a configuration by inverting 2 sites
 
-    @param{list} individual - list of all the visited sites from the first to the last visited
-    @return{list} new configuration with the mutation
+    :param individual: list - list of all the visited sites from the first to the last visited
+    :return : list - new configuration with the mutation
     """
     def mutate(self, individual: list) -> list:
         """ first we remove all previous depots """
@@ -224,10 +224,10 @@ class GeneticAlgorithm:
     Evaluate the cost of visiting sites with this configuration, depending on the number of cars
     and the cost from one site to the next one
 
-    @param{list} individual - list of all the visited sites from the first to the last visited
-    @return{int} value of the cost of this configuration
+    :param individual: list - list of all the visited sites from the first to the last visited
+    :return fitness_score: float - value of the cost of this configuration
     """
-    def fitness(self, individual: list) -> int:
+    def fitness(self, individual: list) -> float:
         vehicle_cost = self.PENALTY * self.nbr_of_vehicles(individual)
 
         travel_cost = 0
@@ -238,18 +238,15 @@ class GeneticAlgorithm:
             site_from = individual[index]
             site_to = individual[index + 1]
 
-            class_name_from = type(site_from).__name__
-            class_name_to = type(site_to).__name__
-
-            if class_name_from != 'Depot' and class_name_to != 'Depot':
-                travel_cost += self.COST_MATRIX[int(site_from.CUSTOMER_ID), int(site_to.CUSTOMER_ID)]
+            if classe(site_from) != 'Depot' and classe(site_to) != 'Depot':
+                travel_cost += self.COST_MATRIX[site_from.INDEX - 1, site_to.INDEX - 1]
 
             else:
                 travel_cost += distance(
-                    float(site_to.LATITUDE),
-                    float(site_to.LONGITUDE),
-                    float(site_from.LATITUDE),
-                    float(site_from.LONGITUDE),
+                    site_to.LATITUDE,
+                    site_to.LONGITUDE,
+                    site_from.LATITUDE,
+                    site_from.LONGITUDE,
                 )
 
         return vehicle_cost + travel_cost
@@ -333,19 +330,20 @@ class GeneticAlgorithm:
         for index_site in range(len(solution)):
             site = solution[index_site]
 
-            if type(site).__name__ == 'Customer':
-                latitudes.append(site.CUSTOMER_LATITUDE)
-                longitudes.append(site.CUSTOMER_LONGITUDE)
+            if site.INDEX != 0:
+                latitudes.append(site.LATITUDE)
+                longitudes.append(site.LONGITUDE)
 
                 plt.annotate("{}".format(index_site),
-                             (site.CUSTOMER_LATITUDE, site.CUSTOMER_LONGITUDE),
+                             (site.LATITUDE, site.LONGITUDE),
                              textcoords="offset points",
                              xytext=(0, 10),
                              ha='center',
                              )
-            elif type(site).__name__ == 'Depot':
-                latitudes.append(site.DEPOT_LATITUDE)
-                longitudes.append(site.DEPOT_LONGITUDE)
+
+            else:
+                latitudes.append(site.LATITUDE)
+                longitudes.append(site.LONGITUDE)
 
                 if vehicle_working < self.NBR_OF_VEHICLES - 1:
                     vehicle_working += 1
@@ -365,7 +363,7 @@ class GeneticAlgorithm:
                 latitudes = []
                 longitudes = []
 
-        plt.plot(self.Depots[0].DEPOT_LATITUDE, self.Depots[0].DEPOT_LONGITUDE, 'rs')
+        plt.plot(self.Depots[0].LATITUDE, self.Depots[0].LONGITUDE, 'rs')
 
         plt.xlabel('latitude')
         plt.ylabel('longitude')
@@ -395,6 +393,9 @@ class GeneticAlgorithm:
         filepath = os.path.join(filepath, 'img_{}.png'.format(iteration + 1))
         fig.savefig(filepath, format='png')
 
+    """
+    :param individual: list - a solution
+    """
     @staticmethod
     def nbr_of_vehicles(individual: list) -> int:
         return len(individual)

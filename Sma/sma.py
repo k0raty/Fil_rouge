@@ -97,13 +97,13 @@ class ModelSma(Model):
 
 
 """ Run the SMA """
-model = ModelSma(nbr_of_iteration)
+model_sma = ModelSma(nbr_of_iteration)
 
 for iteration in range(nbr_of_iteration):
-    model.step()
+    model_sma.step()
 
-model_dataframe = model.datacollector.get_model_vars_dataframe()
-agent_dataframe = model.datacollector.get_agent_vars_dataframe()
+model_dataframe = model_sma.datacollector.get_model_vars_dataframe()
+agent_dataframe = model_sma.datacollector.get_agent_vars_dataframe()
 
 print(model_dataframe)
 print(agent_dataframe)

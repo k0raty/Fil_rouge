@@ -50,10 +50,10 @@ def fitness(solution: list, cost_matrix) -> float:
 
         else:
             travel_cost += distance(
-                float(site_from.LATITUDE),
-                float(site_from.LONGITUDE),
-                float(site_to.LATITUDE),
-                float(site_to.LONGITUDE),
+                site_from.LATITUDE,
+                site_from.LONGITUDE,
+                site_to.LATITUDE,
+                site_to.LONGITUDE,
             )
 
     return travel_cost + vehicle_cost
@@ -85,3 +85,12 @@ def compute_cost_matrix(customers: list):
             cost_matrix[i, j] = distance(lat_i, lon_i, lat_j, lon_j)
 
     return cost_matrix
+
+
+"""
+Shortcut to get the class of an object
+"""
+
+
+def classe(instance):
+    return type(instance).__name__

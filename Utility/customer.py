@@ -19,4 +19,4 @@ class Customer:
         self.CUSTOMER_DELIVERY_SERVICE_TIME_MIN = float(row[5])
         self.TOTAL_WEIGHT_KG = float(row[6])
         self.TOTAL_VOLUME_M3 = float(row[7])
-        self.POS = float(row[8])
+        self.POS = str(row[8])
