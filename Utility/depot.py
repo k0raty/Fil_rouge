@@ -7,6 +7,7 @@ class Depot:
     DEPOT_AVAILABLE_TIME_TO_MIN: int = 15
 
     def __init__(self, row):
+        self.INDEX = 0
         self.ROUTE_ID = row[0]
         self.DEPOT_CODE = row[1]
         self.DEPOT_LATITUDE = float(row[2])

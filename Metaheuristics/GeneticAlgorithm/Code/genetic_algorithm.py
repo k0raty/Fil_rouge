@@ -91,10 +91,12 @@ class GeneticAlgorithm:
             print('Iteration {}, fitness sum {}'.format(iteration, fitness_sum))
 
             sorted_population = sorted(population, key=lambda x: self.fitness(x))
-            self.solution = sorted_population[0]
+            solution = sorted_population[0]
+
+            self.solution = self.adapt_solution_format(solution)
 
             filepath = os.path.join(path, 'img_{}.png'.format(iteration))
-            self.draw_solution(self.solution, filepath)
+            self.draw_solution(solution, filepath)
 
         self.draw_fitness(iteration, fitness_history, filepath)
 
@@ -228,6 +230,7 @@ class GeneticAlgorithm:
 
             if class_name_from != 'Depot' and class_name_to != 'Depot':
                 travel_cost += self.COST_MATRIX[int(site_from.CUSTOMER_ID), int(site_to.CUSTOMER_ID)]
+
             elif class_name_from == 'Depot':
                 distance = self.distance(
                     float(site_to.CUSTOMER_LATITUDE),
@@ -236,6 +239,7 @@ class GeneticAlgorithm:
                     float(site_from.DEPOT_LONGITUDE),
                 )
                 travel_cost += distance
+
             elif class_name_to != 'Depot':
                 distance = self.distance(
                     float(site_from.CUSTOMER_LATITUDE),
@@ -275,9 +279,11 @@ class GeneticAlgorithm:
     def add_depot(self, individual):
         weight = 0
         volume = 0
+
         weight_vehicle = float(self.Vehicles.VEHICLE_TOTAL_WEIGHT_KG)
         volume_vehicle = float(self.Vehicles.VEHICLE_TOTAL_VOLUME_M3)
-        result = []
+
+        result = [self.Depots[0]]
 
         for customer in individual:
             weight += float(customer.TOTAL_WEIGHT_KG)
@@ -289,6 +295,8 @@ class GeneticAlgorithm:
                 volume = 0
 
             result.append(customer)
+
+        result.append(self.Depots[0])
 
         return result
 
@@ -388,3 +396,19 @@ class GeneticAlgorithm:
         if history[-1] == history[-2] and history[-1] == history[-3]:
             return False
         return True
+
+    @staticmethod
+    def adapt_solution_format(solution):
+        adapted_solution = [[]]
+        sub_road_index = 0
+
+        for site in solution:
+            if site.INDEX == 0:
+                adapted_solution[sub_road_index].append(site.INDEX)
+                adapted_solution.append([site.INDEX])
+                sub_road_index += 1
+
+            else:
+                adapted_solution[sub_road_index].append(site.INDEX)
+
+        return adapted_solution

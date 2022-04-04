@@ -12,7 +12,8 @@ class Customer:
     TOTAL_VOLUME_M3: float = 1
     CUSTOMER_DELIVERY_SERVICE_TIME_MIN: float = 1
 
-    def __init__(self, row):
+    def __init__(self, row, index):
+        self.INDEX = index
         self.CUSTOMER_ID = row[0]
         self.ROUTE_ID = row[1]
         self.CUSTOMER_NUMBER = row[2]
