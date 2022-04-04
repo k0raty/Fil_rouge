@@ -1,25 +1,28 @@
 from csv import reader
-from customer import Customer
-from vehicle import Vehicle
-from depot import Depot
+from Utility.customer import Customer
+from Utility.vehicle import Vehicle
+from Utility.depot import Depot
+import os
 
 
 class Database:
-    CUSTOMER_PATH = '../Dataset/table_customers.csv'
-    DEPOT_PATH = '../Dataset/table_depots.csv'
-    VEHICLE_PATH = '../Dataset/table_vehicles.csv'
-
-    Customers = []
-    Vehicles = []
-    Depots = []
+    CUSTOMER_PATH = os.path.join('..', 'Dataset', 'table_customers.csv')
+    DEPOT_PATH = os.path.join('..', 'Dataset', 'table_depots.csv')
+    VEHICLE_PATH = os.path.join('..', 'Dataset', 'table_vehicles.csv')
 
     def __init__(self):
+        self.Customers = []
+        self.vehicles = []
+        self.Depots = []
+
         with open(self.CUSTOMER_PATH, newline='') as csv_file:
             csv_reader = reader(csv_file, delimiter=',')
             next(csv_reader)
+            index_customer = 1
 
             for row in csv_reader:
-                new_customer = Customer(row)
+                new_customer = Customer(row, index_customer)
+                index_customer += 1
                 self.Customers.append(new_customer)
 
         with open(self.DEPOT_PATH, newline='') as csv_file:

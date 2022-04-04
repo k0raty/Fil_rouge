@@ -6,11 +6,20 @@ import matplotlib.pyplot as plt
 import random as rd
 
 """ Import utilities """
-from Utility.common import distance, fitness
+from Utility.database import Database
+from Utility.common import distance, fitness, compute_cost_matrix
 
 
 class Tabou:
-    def __init__(self, customers, depots, vehicles, cost_matrix):
+    def __init__(self, customers=None, depots=None, vehicles=None, cost_matrix=None):
+        if customers is None:
+            database = Database()
+
+            customers = database.Customers
+            vehicles = database.Vehicles[0]
+            depots = database.Depots
+            cost_matrix = compute_cost_matrix(customers)
+
         self.solution = None
 
         self.COST_MATRIX = cost_matrix

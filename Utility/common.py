@@ -1,4 +1,15 @@
+""" Import librairies """
 from math import pi, cos, sqrt, asin
+import numpy as np
+
+"""
+Compute the distance in km between 2 coordinates around the earth
+
+:param lat_1: float - from customer's latitude
+:param lon_1: float - from customer's longitude
+:param lat_2: float - to customer's latitude
+:param lon_2: float - to customer's longitude
+"""
 
 
 def distance(lat_1: float, lon_1: float, lat_2: float, lon_2: float) -> float:
@@ -51,3 +62,29 @@ def fitness(solution: list, cost_matrix) -> float:
             )
 
     return travel_cost
+
+
+"""
+Fill a matrix storing the cost of the travel between every customers
+
+:param customers: list - the list of customers with their coordinates
+"""
+
+
+def compute_cost_matrix(customers: list):
+    nbr_of_customer = len(customers)
+    cost_matrix = np.zeros((nbr_of_customer, nbr_of_customer))
+
+    for i in range(nbr_of_customer):
+        customer_i = customers[i]
+
+        for j in range(nbr_of_customer):
+            customer_j = customers[j]
+            lat_i = float(customer_i.CUSTOMER_LATITUDE)
+            lon_i = float(customer_i.CUSTOMER_LONGITUDE)
+            lat_j = float(customer_j.CUSTOMER_LATITUDE)
+            lon_j = float(customer_j.CUSTOMER_LONGITUDE)
+
+            cost_matrix[i, j] = distance(lat_i, lon_i, lat_j, lon_j)
+
+    return cost_matrix

@@ -4,9 +4,12 @@ from math import floor
 from seaborn import color_palette
 import matplotlib.pyplot as plt
 import matplotlib.lines as lines
-
 import time
 import os
+
+""" Import utilities """
+from Utility.database import Database
+from Utility.common import compute_cost_matrix
 
 
 class GeneticAlgorithm:
@@ -16,7 +19,15 @@ class GeneticAlgorithm:
     POPULATION_SIZE: int = 50
     MAX_ITERATION: int = 50
 
-    def __init__(self, customers, depots, vehicles, cost_matrix):
+    def __init__(self, customers=None, depots=None, vehicles=None, cost_matrix=None):
+        if customers is None:
+            database = Database()
+
+            customers = database.Customers
+            vehicles = database.Vehicles[0]
+            depots = database.Depots
+            cost_matrix = compute_cost_matrix(customers)
+
         self.solution = None
 
         nbr_of_sites = len(customers)
@@ -40,7 +51,7 @@ class GeneticAlgorithm:
         os.mkdir(path)
 
         iteration = 0
-        population = self.generate_population()
+        population = self.generate_population(initial_solution)
         fitness_history = []
 
         while iteration < self.MAX_ITERATION and self.fitness_change(fitness_history):
@@ -255,16 +266,28 @@ class GeneticAlgorithm:
     Generate the initial population of a certain size, with randomly arranged individuals
 
     :param size: int - the number of individuals in the population
+    :param solution: list - an initial solution to the problem
     :return population: list - the population
     """
-    def generate_population(self) -> list:
+    def generate_population(self, solution=None) -> list:
         population = []
+        population_size = self.POPULATION_SIZE
         seed = range(self.NBR_OF_SITES)
 
-        for index_individual in range(self.POPULATION_SIZE):
+        if solution is not None:
+            initial_solution = []
+
+            for sub_road in solution:
+                initial_solution.append(*[customer for customer in sub_road if not 0])
+
+            population.append(initial_solution)
+            population_size -= 1
+
+        for index_individual in range(population_size):
             """ first we generate random roads between customers """
             order = rd.sample(seed, k=self.NBR_OF_SITES)
             individual = [self.Customers[i] for i in order]
+
             """ then we add a depot when needed"""
             individual = self.add_depot(individual)
             population.append(individual)

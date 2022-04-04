@@ -7,7 +7,7 @@ import numpy as np
 """ Import utilities """
 from Utility.database import Database
 from Utility.pool import Pool
-from Utility.common import distance
+from Utility.common import distance, compute_cost_matrix
 
 """ Import metaheuristics """
 from Metaheuristics.GeneticAlgorithm.Code.genetic_algorithm import GeneticAlgorithm
@@ -61,21 +61,7 @@ class ModelSma(Model):
         depots = self.Database.Depots
         vehicles = self.Database.Vehicles[0]
 
-        nbr_of_customer = len(customers)
-
-        cost_matrix = np.zeros((nbr_of_customer, nbr_of_customer))
-
-        for i in range(nbr_of_customer):
-            customer_i = customers[i]
-
-            for j in range(nbr_of_customer):
-                customer_j = customers[j]
-                lat_i = float(customer_i.CUSTOMER_LATITUDE)
-                lon_i = float(customer_i.CUSTOMER_LONGITUDE)
-                lat_j = float(customer_j.CUSTOMER_LATITUDE)
-                lon_j = float(customer_j.CUSTOMER_LONGITUDE)
-
-                cost_matrix[i, j] = distance(lat_i, lon_i, lat_j, lon_j)
+        cost_matrix = compute_cost_matrix(customers)
 
         self.Pool = Pool()
 

@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
-"""
-Antony davi et Floriane Ronzon.
-"""
+""" Import librairies """
 import copy
 import numpy as np
 import random as rd 
@@ -11,24 +9,40 @@ from tqdm import tqdm
 import math
 import matplotlib.pyplot as plt
  
+
+""" Import utilities """
+from Utility.database import Database
+from Utility.common import distance, fitness, compute_cost_matrix
+
+
+class Annealing:
+    def __init__(self, customers=None, depots=None, vehicles=None, cost_matrix=None):
+        if customers is None:
+            database = Database()
+
+            customers = database.Customers
+            vehicles = database.Vehicles[0]
+            depots = database.Depots
+            cost_matrix = compute_cost_matrix(customers)
+
+        self.solution = None
+
+        self.COST_MATRIX = cost_matrix
+
+        self.CUSTOMERS = customers
+        self.DEPOTS = depots
+        self.VEHICLES = vehicles
+
+        self.NBR_OF_VEHICLES = len(vehicles)
+        self.NBR_OF_CUSTOMERS = len(customers)
+
 Q=100 #Ressources par Camion
 alpha=0.001 #Pas de descente de la température
 w=5 #Pénalité dûe au rajout d'un camion dans la solution
 adj_matrix = np.random.randint(1, 20, size=(25, 25)) #Matrice d'adjacence générérant notre graphique
-np.fill_diagonal(adj_matrix,np.zeros(len(adj_matrix))) 
+np.fill_diagonal(adj_matrix,np.zeros(len(adj_matrix)))
 T=1500 #Température de départ
 t=200 #Température minimale
-
-
-class Annealing:
-    def __init__(self, database):
-        self.solution = None
-        self.Database = database
-
-    def main(self, initial_solution=None):
-        solution = []
-        return solution
-
 
 def create_G(adj_matrix,Q):
     """
