@@ -2,22 +2,16 @@
 from mesa import Agent, Model
 from mesa.time import RandomActivation  # agents activated in random order at each step
 from mesa.datacollection import DataCollector
-import matplotlib.pyplot as plt
-import matplotlib.lines as lines
-from seaborn import color_palette
 import numpy as np
-import pandas as pd
-import random as rd
-import os
-import time
 
 """ Import utilities """
 from Utility.database import Database
 from Utility.pool import Pool
+from Utility.common import distance
 
 """ Import metaheuristics """
 from Metaheuristics.GeneticAlgorithm.Code.genetic_algorithm import GeneticAlgorithm
-from Metaheuristics.Tabou.tabou import Tabou
+from Metaheuristics.Tabou.Code.tabou import Tabou
 from Metaheuristics.SimulatedAnnealing.simulated_annealing import Annealing
 
 """ Define problem parameters """
@@ -42,9 +36,9 @@ class AgentMeta(Agent):
 """ Define Gini """
 
 
-def compute_gini(model):
-    agents_fitness = sorted([agent.fitness for agent in model.schedule.agents])
-    nbr_of_agent = model.num_agents
+def compute_gini(model_sma):
+    agents_fitness = sorted([agent.fitness for agent in model_sma.schedule.agents])
+    nbr_of_agent = model_sma.num_agents
 
     total_fitness = sum(agents_fitness)
 
@@ -62,6 +56,27 @@ class ModelSma(Model):
 
     def __init__(self, nbr_of_genetic, nbr_of_tabou, nbr_of_recuit):
         self.Database = Database()
+
+        customers = self.Database.Customers
+        depots = self.Database.Depots
+        vehicles = self.Database.Vehicles[0]
+
+        nbr_of_customer = len(customers)
+
+        cost_matrix = np.zeros((nbr_of_customer, nbr_of_customer))
+
+        for i in range(nbr_of_customer):
+            customer_i = customers[i]
+
+            for j in range(nbr_of_customer):
+                customer_j = customers[j]
+                lat_i = float(customer_i.CUSTOMER_LATITUDE)
+                lon_i = float(customer_i.CUSTOMER_LONGITUDE)
+                lat_j = float(customer_j.CUSTOMER_LATITUDE)
+                lon_j = float(customer_j.CUSTOMER_LONGITUDE)
+
+                cost_matrix[i, j] = distance(lat_i, lon_i, lat_j, lon_j)
+
         self.Pool = Pool()
 
         self.schedule = RandomActivation(self)
@@ -73,17 +88,17 @@ class ModelSma(Model):
         # Create agents
         for index_agent in range(nbr_of_genetic):
             unique_id = 'genetic_{}'.format(index_agent)
-            agent = AgentMeta(unique_id, self, GeneticAlgorithm(self.Database))
+            agent = AgentMeta(unique_id, self, GeneticAlgorithm(customers, depots, vehicles, cost_matrix))
             self.schedule.add(agent)
 
         for index_agent in range(nbr_of_tabou):
             unique_id = 'tabou_{}'.format(index_agent)
-            agent = AgentMeta(unique_id, self, Tabou(self.Database))
+            agent = AgentMeta(unique_id, self, Tabou(customers, depots, vehicles, cost_matrix))
             self.schedule.add(agent)
 
         for index_agent in range(nbr_of_recuit):
             unique_id = 'recuit_{}'.format(index_agent)
-            agent = AgentMeta(unique_id, self, Annealing(self.Database))
+            agent = AgentMeta(unique_id, self, Annealing(customers, depots, vehicles, cost_matrix))
             self.schedule.add(agent)
 
     def step(self):
@@ -97,3 +112,9 @@ model = ModelSma(nbr_of_iteration)
 
 for iteration in range(nbr_of_iteration):
     model.step()
+
+model_dataframe = model.datacollector.get_model_vars_dataframe()
+agent_dataframe = model.datacollector.get_agent_vars_dataframe()
+
+print(model_dataframe)
+print(agent_dataframe)

@@ -1,5 +1,5 @@
+""" Import librairies """
 import random as rd
-import numpy as np
 from math import floor
 from seaborn import color_palette
 import matplotlib.pyplot as plt
@@ -10,39 +10,25 @@ import os
 
 
 class GeneticAlgorithm:
-    PROBA_CROSSING = 0.8
-    TOURNAMENT_SIZE = 3
+    PROBA_CROSSING: float = 0.8
+    TOURNAMENT_SIZE: int = 3
     PENALTY: int = 2
-    POPULATION_SIZE = 50
-    MAX_ITERATION = 50
+    POPULATION_SIZE: int = 50
+    MAX_ITERATION: int = 50
 
-    def __init__(self, database):
+    def __init__(self, customers, depots, vehicles, cost_matrix):
         self.solution = None
-        self.Database = database
 
-        nbr_of_sites = len(self.Database.Customers)
-        cost_matrix = np.zeros((nbr_of_sites, nbr_of_sites))
-
-        for i in range(nbr_of_sites):
-            customer_i = self.Database.Customers[i]
-
-            for j in range(nbr_of_sites):
-                customer_j = self.Database.Customers[j]
-                lat_i = float(customer_i.CUSTOMER_LATITUDE)
-                lon_i = float(customer_i.CUSTOMER_LONGITUDE)
-                lat_j = float(customer_j.CUSTOMER_LATITUDE)
-                lon_j = float(customer_j.CUSTOMER_LONGITUDE)
-
-                cost_matrix[i, j] = self.distance(lat_i, lon_i, lat_j, lon_j)
+        nbr_of_sites = len(customers)
 
         self.COST_MATRIX = cost_matrix
-        self.NBR_OF_VEHICLES = len(self.Database.Vehicles)
+        self.NBR_OF_VEHICLES = len(vehicles)
         self.NBR_OF_SITES = nbr_of_sites
         self.PROBA_MUTATION = 1 / nbr_of_sites
 
-        self.Customers = self.Database.Customers
-        self.Depots = self.Database.Depots
-        self.Vehicles = self.Database.Vehicles[0]
+        self.Customers = customers
+        self.Depots = depots
+        self.Vehicles = vehicles
 
     """
     Run the GeneticAlgorithm
@@ -111,6 +97,8 @@ class GeneticAlgorithm:
             self.draw_solution(self.solution, filepath)
 
         self.draw_fitness(iteration, fitness_history, filepath)
+
+        return self.solution, self.fitness(self.solution)
 
     """
     Use a stochastic method ("Technique de la roulette") to select individuals from the current generation
@@ -387,7 +375,6 @@ class GeneticAlgorithm:
     @staticmethod
     def nbr_of_vehicles(individual: list) -> int:
         return len(individual)
-
 
     """
     Check that the fitness value is still changing, if no then the return will stop the algorithm in the main function
