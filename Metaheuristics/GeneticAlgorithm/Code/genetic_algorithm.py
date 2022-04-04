@@ -9,8 +9,10 @@ import os
 
 """ Import utilities """
 from Utility.database import Database
-from Utility.common import compute_cost_matrix
+from Utility.common import compute_cost_matrix, distance
 
+
+os.chdir(os.path.join('..', '..'))
 
 class GeneticAlgorithm:
     PROBA_CROSSING: float = 0.8
@@ -24,7 +26,7 @@ class GeneticAlgorithm:
             database = Database()
 
             customers = database.Customers
-            vehicles = database.Vehicles[0]
+            vehicles = database.Vehicles
             depots = database.Depots
             cost_matrix = compute_cost_matrix(customers)
 
@@ -39,7 +41,7 @@ class GeneticAlgorithm:
 
         self.Customers = customers
         self.Depots = depots
-        self.Vehicles = vehicles
+        self.Vehicles = vehicles[0]
 
     """
     Run the GeneticAlgorithm
@@ -47,7 +49,7 @@ class GeneticAlgorithm:
     def main(self, initial_solution=None):
         plt.close('all')
         timestamp = floor(time.time())
-        path = os.path.join('../..', 'Graphs', 'test_{}'.format(timestamp))
+        path = os.path.join('..', 'Graphs', 'test_{}'.format(timestamp))
         os.mkdir(path)
 
         iteration = 0
@@ -242,23 +244,24 @@ class GeneticAlgorithm:
             if class_name_from != 'Depot' and class_name_to != 'Depot':
                 travel_cost += self.COST_MATRIX[int(site_from.CUSTOMER_ID), int(site_to.CUSTOMER_ID)]
 
+            elif class_name_from == 'Depot' and class_name_to == 'Depot':
+                continue
+
             elif class_name_from == 'Depot':
-                distance = self.distance(
+                travel_cost += distance(
                     float(site_to.CUSTOMER_LATITUDE),
                     float(site_to.CUSTOMER_LONGITUDE),
                     float(site_from.DEPOT_LATITUDE),
                     float(site_from.DEPOT_LONGITUDE),
                 )
-                travel_cost += distance
 
             elif class_name_to != 'Depot':
-                distance = self.distance(
+                travel_cost += distance(
                     float(site_from.CUSTOMER_LATITUDE),
                     float(site_from.CUSTOMER_LONGITUDE),
                     float(site_to.DEPOT_LATITUDE),
                     float(site_to.DEPOT_LONGITUDE),
                 )
-                travel_cost += distance
 
         return vehicle_cost + travel_cost
 

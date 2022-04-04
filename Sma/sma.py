@@ -3,16 +3,19 @@ from mesa import Agent, Model
 from mesa.time import RandomActivation  # agents activated in random order at each step
 from mesa.datacollection import DataCollector
 import numpy as np
+import os
 
 """ Import utilities """
 from Utility.database import Database
 from Utility.pool import Pool
-from Utility.common import distance, compute_cost_matrix
+from Utility.common import compute_cost_matrix
 
 """ Import metaheuristics """
 from Metaheuristics.GeneticAlgorithm.Code.genetic_algorithm import GeneticAlgorithm
 from Metaheuristics.Tabou.Code.tabou import Tabou
-from Metaheuristics.SimulatedAnnealing.simulated_annealing import Annealing
+from Metaheuristics.SimulatedAnnealing.Code.simulated_annealing import Annealing
+
+os.chdir('..')
 
 """ Define problem parameters """
 nbr_of_iteration = 10

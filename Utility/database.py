@@ -1,18 +1,32 @@
+""" Import librairies """
 from csv import reader
+import os
+
+""" Import utilities """
 from Utility.customer import Customer
 from Utility.vehicle import Vehicle
 from Utility.depot import Depot
-import os
+
+os.chdir('..')
 
 
 class Database:
-    CUSTOMER_PATH = os.path.join('..', 'Dataset', 'table_customers.csv')
-    DEPOT_PATH = os.path.join('..', 'Dataset', 'table_depots.csv')
-    VEHICLE_PATH = os.path.join('..', 'Dataset', 'table_vehicles.csv')
+    Customers = []
+    Vehicles = []
+    Depots = []
 
     def __init__(self):
+
+        self.CUSTOMER_PATH = os.path.join('Dataset', 'table_customers.csv')
+        self.DEPOT_PATH = os.path.join('Dataset', 'table_depots.csv')
+        self.VEHICLE_PATH = os.path.join('Dataset', 'table_vehicles.csv')
+
+        self.refreh()
+
+    def refreh(self):
+        print('current path', os.getcwd())
         self.Customers = []
-        self.vehicles = []
+        self.Vehicles = []
         self.Depots = []
 
         with open(self.CUSTOMER_PATH, newline='') as csv_file:
