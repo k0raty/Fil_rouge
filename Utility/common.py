@@ -30,7 +30,7 @@ and the cost from one site to the next one
 """
 
 
-def fitness(solution: list, cost_matrix) -> float:
+def compute_fitness(solution: list, cost_matrix) -> float:
     travel_cost = 0
     penalty = 5
     nbr_of_vehicle = 1

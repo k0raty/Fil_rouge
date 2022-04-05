@@ -11,12 +11,12 @@ import os
 from Utility.database import Database
 from Utility.common import compute_cost_matrix, distance, classe  # , fitness
 
-os.chdir(os.path.join('..', '..'))
+os.chdir(os.path.join('', '..'))
 
 
 class GeneticAlgorithm:
     PROBA_CROSSING: float = 0.8
-    TOURNAMENT_SIZE: int = 3
+    TOURNAMENT_SIZE: int = 4
     PENALTY: int = 2
     POPULATION_SIZE: int = 50
     MAX_ITERATION: int = 50
@@ -163,7 +163,7 @@ class GeneticAlgorithm:
         for index_site in range(len(father)):
             site = father[index_site]
 
-            if type(site).__name__ != 'Depot':
+            if classe(site) != 'Depot':
                 new_father.append(site)
 
         new_mother = []
@@ -171,7 +171,7 @@ class GeneticAlgorithm:
         for index_site in range(len(mother)):
             site = mother[index_site]
 
-            if type(site).__name__ != 'Depot':
+            if classe(site) != 'Depot':
                 new_mother.append(site)
 
         point = rd.randint(0, self.NBR_OF_SITES)
@@ -199,14 +199,7 @@ class GeneticAlgorithm:
     """
     def mutate(self, individual: list) -> list:
         """ first we remove all previous depots """
-        individual_len = len(individual)
-        filtered = []
-
-        for index_site in range(individual_len):
-            site = individual[index_site]
-
-            if type(site).__name__ != 'Depot':
-                filtered.append(site)
+        filtered = [site for site in individual if classe(site) != 'Depot']
 
         n = self.NBR_OF_SITES - 1
         i = rd.randint(0, n - 1)
@@ -256,9 +249,10 @@ class GeneticAlgorithm:
 
     :param size: int - the number of individuals in the population
     :param solution: list - an initial solution to the problem
+    :param proportion: float - the proportion of the given solution in the population
     :return population: list - the population
     """
-    def generate_population(self, solution=None) -> list:
+    def generate_population(self, solution=None, proportion=0) -> list:
         population = []
         population_size = self.POPULATION_SIZE
         seed = range(self.NBR_OF_SITES)
@@ -269,8 +263,12 @@ class GeneticAlgorithm:
             for sub_road in solution:
                 initial_solution.append(*[customer for customer in sub_road if not 0])
 
-            population.append(initial_solution)
-            population_size -= 1
+            nbr_of_solution = int(proportion * population_size)
+
+            for index in range(nbr_of_solution):
+                population.append(initial_solution)
+
+            population_size -= nbr_of_solution
 
         for index_individual in range(population_size):
             """ first we generate random roads between customers """
@@ -413,18 +411,22 @@ class GeneticAlgorithm:
             return False
         return True
 
+    """
+    :param solution: list - solution with the genetic algorithm format
+    :return formatted_solution: list - solution with a format readable by other algorithms
+    """
     @staticmethod
     def adapt_solution_format(solution):
-        adapted_solution = [[]]
+        formatted_solution = [[]]
         sub_road_index = 0
 
         for site in solution:
             if site.INDEX == 0:
-                adapted_solution[sub_road_index].append(site.INDEX)
-                adapted_solution.append([site.INDEX])
+                formatted_solution[sub_road_index].append(site.INDEX)
+                formatted_solution.append([site.INDEX])
                 sub_road_index += 1
 
             else:
-                adapted_solution[sub_road_index].append(site.INDEX)
+                formatted_solution[sub_road_index].append(site.INDEX)
 
-        return adapted_solution
+        return formatted_solution

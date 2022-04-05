@@ -11,9 +11,9 @@ from Utility.pool import Pool
 from Utility.common import compute_cost_matrix
 
 """ Import metaheuristics """
-from Metaheuristics.GeneticAlgorithm.Code.genetic_algorithm import GeneticAlgorithm
-from Metaheuristics.Tabou.Code.tabou import Tabou
-from Metaheuristics.SimulatedAnnealing.Code.simulated_annealing import Annealing
+from Metaheuristics.GeneticAlgorithm.genetic_algorithm import GeneticAlgorithm
+from Metaheuristics.Tabou.tabou import Tabou
+from Metaheuristics.SimulatedAnnealing.simulated_annealing import Annealing
 
 os.chdir('..')
 
@@ -40,7 +40,7 @@ class AgentMeta(Agent):
 
 
 def compute_gini(model_sma):
-    agents_fitness = sorted([agent.fitness for agent in model_sma.schedule.agents])
+    agents_fitness = sorted([agent.compute_fitness for agent in model_sma.schedule.agents])
     nbr_of_agent = model_sma.num_agents
 
     total_fitness = sum(agents_fitness)
