@@ -1,14 +1,22 @@
 """ Import librairies """
 from math import pi, cos, sqrt, asin
+
+import numpy
 import numpy as np
 
 """
 Compute the distance in km between 2 coordinates around the earth
 
-:param lat_1: float - from customer's latitude
-:param lon_1: float - from customer's longitude
-:param lat_2: float - to customer's latitude
-:param lon_2: float - to customer's longitude
+Parameters
+----------
+lat :float - the summits' latitude
+lon :float - the summits' longitude
+----------
+
+Returns
+-------
+distance: float - the distance between the 2 given summits
+-------
 """
 
 
@@ -25,12 +33,20 @@ def distance(lat_1: float, lon_1: float, lat_2: float, lon_2: float) -> float:
 Evaluate the cost of visiting sites with this configuration, depending on the number of cars
 and the cost from one site to the next one
 
-@param{list} individual - list of all the visited sites from the first to the last visited
-@return{int} value of the cost of this configuration
+Parameters
+----------
+solution: list - list of all the visited sites from the first to the last visited
+cost_matrix: numpy.ndarray - the cost of each travel to use to compute the fitness
+----------
+
+Returns
+-------
+fitness_score:float - value of the cost of this configuration
+-------
 """
 
 
-def compute_fitness(solution: list, cost_matrix) -> float:
+def compute_fitness(solution: list, cost_matrix: numpy.ndarray) -> float:
     travel_cost = 0
     penalty = 5
     nbr_of_vehicle = 1
@@ -62,13 +78,20 @@ def compute_fitness(solution: list, cost_matrix) -> float:
 """
 Fill a matrix storing the cost of the travel between every customers
 
-:param customers: list - the list of customers with their coordinates
-:return cost_matrix: np.array - a matrix containing in a cell (i, j) the distance of the travel between
+Parameters
+----------
+customers: list - the list of customers with their coordinates
+----------
+
+Returns
+-------
+cost_matrix: numpy.ndarray - a matrix containing in a cell (i, j) the distance of the travel between
 site i and j
+-------
 """
 
 
-def compute_cost_matrix(customers: list):
+def compute_cost_matrix(customers: list) -> numpy.ndarray:
     nbr_of_customer = len(customers)
     cost_matrix = np.zeros((nbr_of_customer, nbr_of_customer))
 

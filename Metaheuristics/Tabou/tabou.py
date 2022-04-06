@@ -1,7 +1,6 @@
 """ Import librairies """
-import copy
+from copy import deepcopy
 import os
-import pandas as pd
 import random as rd
 
 """ Import utilities """
@@ -29,12 +28,12 @@ class Tabou:
 
         self.solution = None
 
-        nbr_of_sites = len(customers)
+        nbr_of_customers = len(customers)
 
         self.COST_MATRIX = cost_matrix
         self.NBR_OF_VEHICLES = len(vehicles)
-        self.NBR_OF_SITES = nbr_of_sites
-        self.PROBA_MUTATION = 1 / nbr_of_sites
+        self.NBR_OF_CUSTOMERS = nbr_of_customers
+        self.PROBA_MUTATION = 1 / nbr_of_customers
 
         self.Customers = customers
         self.Depots = depots
@@ -47,6 +46,7 @@ class Tabou:
     ----------
     initial_solution: list - a given solution that the algorithm must improve
     -------
+    
     Returns
     -------
     solution: list - new solution more optimized than the initial one
@@ -55,6 +55,9 @@ class Tabou:
     """
 
     def main(self, initial_solution=None):
+        if initial_solution is None:
+            initial_solution = self.initialisation()
+
         solution, fitness = self.find_best_neighbor(initial_solution)
 
         for iteration in range(self.MAX_ITERATION):
@@ -71,6 +74,7 @@ class Tabou:
     ----------
     initial_solution: list - a given solution
     ----------
+    
     Returns
     -------
     solution: list - the best neighbor of the given solution
@@ -98,45 +102,48 @@ class Tabou:
     ----------
     solution: list - a given solution
     ----------
+    
     Returns
     -------
     neighbor: list - a new solution close to the given one
     -------
     """
 
-    def find_neighbor(self, solution):
-        neighbor = copy.deepcopy(solution)
+    @staticmethod
+    def find_neighbor(solution):
+        neighbor = deepcopy(solution)
 
-        nbr_of_sub_road = len(solution)
+        nbr_of_delivery = len(solution)
 
-        index_sub_road_i = rd.randint(0, nbr_of_sub_road - 1)
-        index_sub_road_j = rd.randint(0, nbr_of_sub_road - 1)
+        index_delivery_i = rd.randint(0, nbr_of_delivery - 1)
+        index_delivery_j = rd.randint(0, nbr_of_delivery - 1)
 
-        sub_road_i = solution[index_sub_road_i]
-        sub_road_j = solution[index_sub_road_j]
+        delivery_i = solution[index_delivery_i]
+        delivery_j = solution[index_delivery_j]
 
-        length_sub_road_i = len(sub_road_i)
-        length_sub_road_j = len(sub_road_j)
+        length_delivery_i = len(delivery_i)
+        length_delivery_j = len(delivery_j)
 
-        if length_sub_road_i >= 3 and length_sub_road_j >= 3:
-            index_summit_i = rd.randint(1, length_sub_road_i - 1)
-            index_summit_j = rd.randint(1, length_sub_road_j - 1)
+        if length_delivery_i >= 3 and length_delivery_j >= 3:
+            index_summit_i = rd.randint(1, length_delivery_i - 1)
+            index_summit_j = rd.randint(1, length_delivery_j - 1)
 
-            summit_i = sub_road_i[index_summit_i]
-            summit_j = sub_road_j[index_summit_j]
+            summit_i = delivery_i[index_summit_i]
+            summit_j = delivery_j[index_summit_j]
 
-            neighbor[index_sub_road_i][index_summit_i] = summit_j
-            neighbor[index_sub_road_j][index_summit_j] = summit_i
+            neighbor[index_delivery_i][index_summit_i] = summit_j
+            neighbor[index_delivery_j][index_summit_j] = summit_i
 
         return neighbor
 
     """
-    Vérifie si une solution vérifie les critères définis
+    Check if a solution match the validity criteria 
 
     Parameters
     -------
     solution: list - a given solution
     -------
+    
     Returns
     -------
     :bool - the validity of the given solution
@@ -144,57 +151,56 @@ class Tabou:
     """
 
     def is_solution_valid(self, solution):
-        nbr_of_sub_road = len(solution)
+        nbr_of_delivery = len(solution)
 
-        for index_sub_road in range(nbr_of_sub_road):
-            sub_road = solution[index_sub_road]
+        for index_delivery in range(nbr_of_delivery):
+            delivery = solution[index_delivery]
 
-            if not self.is_sub_road_valid(sub_road):
+            if not self.is_delivery_valid(delivery):
                 return False
 
         return True
 
     """
-    Vérifie si une livraison vérifie les critères définis
-    en loccurence les horaires de passage et la masse de chaque camion
+    Check if a delivery match the validity criteria (for instance time constraints and vehicle's capacity)
 
     Parameters
     -------
-    sub_road: list - a portion of a solution
+    delivery: list - a portion of a solution
     -------
-    Returns:
+    
+    Returns
     -------
-    :bool - the validity of the given sub road
+    :bool - the validity of the given delivery
     -------
     """
 
-    def is_sub_road_valid(self, sub_road):
-        weight = 0  # en kg
-        current_t = 481  # en min
+    def is_delivery_valid(self, delivery):
+        weight = 0
+        time = 481
 
-        nbr_of_summit = len(sub_road)
+        nbr_of_summit = len(delivery)
 
         for index_summit in range(1, nbr_of_summit - 1):
-            line = df.iloc[sub_road[index_summit]]
-            package_weight = line['TOTAL_WEIGHT_KG']
+            summit = self.Customers[delivery[index_summit]]
 
-            t_1to2 = 0
+            package_weight = summit.TOTAL_WEIGHT_KG
 
             if nbr_of_summit >= 2:
-                line_1 = df.iloc[sub_road[nbr_of_summit - 1]]
-                line_2 = df.iloc[sub_road[nbr_of_summit - 2]]
-                lat_1, lon_1 = line_1['CUSTOMER_LATITUDE'], line_1['CUSTOMER_LONGITUDE']
-                lat_2, lon_2 = line_2['CUSTOMER_LATITUDE'], line_2['CUSTOMER_LONGITUDE']
-                dist = distance(lat_1, lon_1, lat_2, lon_2)
-                t_1to2 = (dist / self.VEHICLE_SPEED) / 60
+                summit_i = self.Customers[delivery[nbr_of_summit - 1]]
+                summit_j = self.Customers[delivery[nbr_of_summit - 2]]
 
-            current_t + t_1to2
+                dist = distance(summit_i.LATITUDE, summit_i.LONGITUDE, summit_j.LATITUDE, summit_j.LONGITUDE)
 
-            t_min, t_max = line['CUSTOMER_TIME_WINDOW_FROM_MIN'], line['CUSTOMER_TIME_WINDOW_TO_MIN']
+                time += dist / self.VEHICLE_SPEED / 60
 
-            if t_min == 780: t_min = 480
+            time_min = summit.CUSTOMER_TIME_WINDOW_FROM_MIN
+            time_max = summit.CUSTOMER_TIME_WINDOW_TO_MIN
 
-            if package_weight > self.VEHICLE_CAPACITY or (t_min > current_t or current_t > t_max):
+            weight_criteria = package_weight > self.VEHICLE_CAPACITY
+            time_criteria = time_min > time or time > time_max
+
+            if weight_criteria or time_criteria:
                 return False
 
             else:
@@ -202,156 +208,90 @@ class Tabou:
 
         return True
 
+    """
+    Crée une livraison pour un camion donné selon les paramètres définis:
+    horaires de livraison respectées
+    masse maximale des camions non dépassées
 
-    def livraison_un_camion(self, df, all_treated_lines):
-                                                       """
-                                                       Crée une livraison pour un camion donné selon les paramètres définis:
-                                                       horaires de livraison respectées
-                                                       masse maximale des camions non dépassées
+    Parameters
+    ----------
+    delivered_customers: list - the list of the customers indexes who have been delivered so far in the solution
+    -------
+    
+    Returns
+    -------
+    delivered_customers: list - the list of the customers indexes who have been delivered so far in the solution
+    delivery: list - a portion of the solution
+    """
+    def generate_delivery(self, delivered_customers):
+        weight = 0
+        delivery = [0]
 
-                                                       Parameters
-                                                       ----------
-                                                       df : dataframe
-                                                       dataframe de travail.
-                                                       all_treated_lines : list of intagers
-                                                       clients déjà traités.
-                                                       -------
-                                                       Returns
-                                                       -------
-                                                       all_treated_lines: la liste des commandes déjà traitées avec celles de cette commande en plus
-                                                       L_parcours: la livraison du camion en question ex: [1,4,5,7,8,9,11,552,665,..]
-                                                       """
-                                                       Q = 5000  # en kg
-                                                       weight = 0
-                                                       # la liste tabou contient toutes les lignes déjà traitées
-                                                       L_lines = []  # liste des lignes traitées lors de cette tournée
-                                                       L_customers = []  # c'est une liste informative pour savoir le chemin qu'a pris le camion sans avoir à reparcourir chaque ligne pour comprendre quel client correspondait à quelle ligne
+        current_time = 481
 
-                                                       N = df.shape[0]
+        for index_customer in range(self.NBR_OF_CUSTOMERS):
+            customer = self.Customers[index_customer]
 
-                                                       current_t = 481
-                                                       v = 50  # m/s
-                                                       for i in range(1, N):
-                                                       if (i in all_treated_lines) == False:
-                                                       line = df.iloc[i]
-                                                       package_weight = line['TOTAL_WEIGHT_KG']
+            if customer.INDEX in delivered_customers:
+                continue
 
-                                                       L_parallel = deepcopy(L_lines)
-                                                       L_parallel.append(i)
+            if weight + customer.TOTAL_WEIGHT_KG > self.VEHICLE_CAPACITY:
+                continue
 
-                                                       m = len(L_lines)
+            weight += customer.TOTAL_WEIGHT_KG
+            delivery.append(customer.INDEX)
+            delivered_customers.append(customer.INDEX)
 
-                                                       abs_t = current_t
-                                                       t_1to2 = 0
+            if not (customer.INDEX in delivered_customers):
+                package_weight = customer.TOTAL_WEIGHT_KG
 
-                                                       if m >= 2:
-                                                       line_1 = df.iloc[L_lines[m - 1]]
-                                                       line_2 = df.iloc[L_lines[m - 2]]
-                                                       lat_1, lon_1 = line_1['CUSTOMER_LATITUDE'], line_1['CUSTOMER_LONGITUDE']
-                                                       lat_2, lon_2 = line_2['CUSTOMER_LATITUDE'], line_2['CUSTOMER_LONGITUDE']
-                                                       dist = dt.distance(lat_1, lon_1, lat_2, lon_2)
-                                                       t_1to2 = (dist / v) / 60
+                m = len(delivery)
 
-                                                       abs_t = current_t + t_1to2
+                if m >= 2:
+                    customer_i = self.Customers[index_customer_i]
+                    customer_j = self.Customers[index_customer_j]
 
-                                                       t_min, t_max = line['CUSTOMER_TIME_WINDOW_FROM_MIN'], line['CUSTOMER_TIME_WINDOW_TO_MIN']
-                                                       if t_min == 780:
-                                                       t_min = 480
+                    dist = distance(customer_i.LATITUDE, customer_i.LONGITUDE, customer_j.LATITUDE, customer_j.LONGITUDE)
 
-                                                       if weight + package_weight < Q and t_min <= abs_t <= t_max:
-                                                       weight += package_weight
+                    time_from_i_to_j = dist / self.VEHICLE_SPEED / 60
 
-                                                       current_t += t_1to2
+                    total_time = current_time + time_from_i_to_j
 
-                                                       L_lines.append(i)
+                time_min = customer.CUSTOMER_TIME_WINDOW_FROM_MIN
+                time_max = customer.CUSTOMER_TIME_WINDOW_TO_MIN
 
-                                                       for i in range(len(L_lines)):
-                                                       all_treated_lines.append(L_lines[i])
-
-                                                       L_parcours = [0]
-                                                       for i in range(len(L_lines)):
-                                                       L_parcours.append(L_lines[i])
-                                                       L_parcours.append(0)
-
-                                                       return (all_treated_lines, L_parcours)
+                if weight + package_weight < self.VEHICLE_CAPACITY and time_min <= total_time <= time_max:
 
 
+                current_time += time_from_i_to_j
+
+        delivery.append(0)
+
+        return delivered_customers, delivery
+
+    """
+    Generate an initial valid solution taking into account the time and weigh constraints 
+    
+    Parameters
+    -------
+    
+    -------
+    
+    Returns
+    -------
+    solution: list - a solution of the problem containing all the deliveries to be done
+    -------
+    """
     def initialisation(self):
-                             """
-                             Cette fonction crée une solution initiale non aléatoire, non optimisée, mais valable
-                             Elle prend en compte:
-                             le temps dans lequel le client veut être livré
-                             le poids maximal dans le camion
-                             Parameters
-                             -------
-                             -------
-                             Returns:
-                             -------
-                             SOLUTION : [[0,1,2,3,5,6,9,..],[0,45,48,45,...],...] chaque sous liste correspond à un camion
-                             -------
-                             """
-                             df = pd.read_excel(os.getcwd() + '\\data\\table_2_customers_features.xls')
+        solution = []
+        all_treated_lines = []
 
-                             SOLUTION = []
+        while len(all_treated_lines) < self.NBR_OF_CUSTOMERS - 1:
+            all_treated_lines, delivery = self.generate_delivery(all_treated_lines)
 
-                             all_treated_lines = []
+            solution.append(delivery)
 
-                             N = df.shape[0]
+            # post-processing to remove duplicated customers
+            all_treated_lines = list(set(all_treated_lines))
 
-                             nb_camions = 0
-                             while len(all_treated_lines) < N - 1:
-                             nb_camions += 1
-
-                             all_treated_lines, L_parcours = livraison_un_camion(df, all_treated_lines)
-
-                             SOLUTION.append(L_parcours)
-
-                             all_treated_lines = list(set(all_treated_lines))  # On supprime les doublons de la liste des clients livrés
-                             # print(SOLUTION)
-                             return (SOLUTION)
-
-
-    def fitness(self, df, S):
-                           """
-                           Prend une solution en argument et donne son score fitness (propre au tabou, séparé du score fitness du SMA)
-                           PARAMETERS
-                           ------
-                           df:dataframe de travail
-                           S: Solution
-                           ------
-                           RETURNS
-                           ------
-                           fitness_score: plus il est haut plus la solution est attractive
-                           ------
-                           """
-                           fitness_score = 0
-                           for i in range(len(S)):
-                           for j in range(len(S[i]) - 1):
-                           line_1 = df.iloc[S[i][j]]
-                           line_2 = df.iloc[S[i][j + 1]]
-                           lat_1, lon_1 = line_1['CUSTOMER_LATITUDE'], line_1['CUSTOMER_LONGITUDE']
-                           lat_2, lon_2 = line_2['CUSTOMER_LATITUDE'], line_2['CUSTOMER_LONGITUDE']
-                           dist = dt.distance(lat_1, lon_1, lat_2, lon_2)
-                           fitness_score += dist
-                           fitness_score = fitness_score / 4600000
-                           fitness_score += (fitness_score / 100) * len(S)  # prise en compte relative du nombre de camions
-                           return (1 / fitness_score)
-
-
-    def total_time(self, df, L_customers):
-                                        """
-                                        Fonction utilisée pour créer la solution initiale: permet le calcul du temps déjà traversé par un camion
-                                        """
-                                        current_time = 481
-                                        N = len(L_customers)
-                                        v = 50  # m/s
-                                        if N >= 2:
-                                        for i in range(N - 1):
-                                        line_1 = df.iloc[i]
-                                        line_2 = df.iloc[i + 1]
-                                        lat_1, lon_1 = line_1['CUSTOMER_LATITUDE'], line_1['CUSTOMER_LONGITUDE']
-                                        lat_2, lon_2 = line_2['CUSTOMER_LATITUDE'], line_2['CUSTOMER_LONGITUDE']
-                                        dist = dt.distance(lat_1, lon_1, lat_2, lon_2)
-                                        t_1to2 = (dist / v) / 60
-                                        current_time += t_1to2
-                                        return (current_time)
+        return solution
