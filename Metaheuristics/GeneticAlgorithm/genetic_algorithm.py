@@ -4,6 +4,7 @@ from numpy import mean, argmin
 from seaborn import color_palette
 import matplotlib.pyplot as plt
 import matplotlib.lines as lines
+from copy import deepcopy
 # import time
 # from math import floor
 
@@ -163,9 +164,17 @@ class GeneticAlgorithm:
     Then remove the weakest
     Finally randomly select individuals to generate the new population of the same size
 
-    :param population: list - current population
-    :return population_survivors: list - selected population
+    Parameters
+    ----------
+    population: list - current population
+    ----------
+    
+    Returns
+    -------
+    population_survivors: list - selected population
+    -------
     """
+
     def determinist_selection(self, population: list) -> list:
         population_survivors = sorted(population, key=lambda x: compute_fitness(x, self.COST_MATRIX, self.Vehicles))
         population_survivors = population_survivors[:self.POPULATION_SIZE - self.TOURNAMENT_SIZE]
@@ -176,42 +185,43 @@ class GeneticAlgorithm:
     """
     Apply a crossover between the father and mother configuration, using a pmx-like crossover
 
-    @param{list} father - one configuration
-    @param{list} mother - an other configuration
-    @return{list} return two new configurations created from the 2 parents
+    Parameters
+    ----------
+    father: list - a solution
+    mother: list - an other solution
+    ----------
+    
+    Returns
+    -------
+    brother: list - a new solution
+    sister: list - an other new solution
+    -------
     """
+
     def pmx_cross_over(self, father, mother):
-        """ first we remove all previous depots """
-        new_father = []
+        father_customers = []
+        mother_customers = []
 
-        for index_summit in range(len(father)):
-            summit = father[index_summit]
+        for delivery in father:
+            father_customers += [summit for summit in delivery if summit != 0]
 
-            if classe(summit) != 'Depot':
-                new_father.append(summit)
+        for delivery in mother:
+            mother_customers += [summit for summit in delivery if summit != 0]
 
-        new_mother = []
+        point = rd.randint(0, self.NBR_OF_VEHICLE)
 
-        for index_summit in range(len(mother)):
-            summit = mother[index_summit]
+        brother_order = father_customers[:point]
+        sister_order = mother_customers[:point]
 
-            if classe(summit) != 'Depot':
-                new_mother.append(summit)
+        for index_customer in range(self.NBR_OF_CUSTOMER):
+            if mother_customers[index_customer] not in brother_order:
+                brother_order.append(mother_customers[index_customer])
 
-        point = rd.randint(0, self.NBR_OF_SITES)
+            if father_customers[index_customer] not in sister_order:
+                sister_order.append(father_customers[index_customer])
 
-        brother = new_father[:point]
-        sister = new_mother[:point]
-
-        for index in range(self.NBR_OF_SITES):
-            if new_mother[index] not in brother:
-                brother.append(new_mother[index])
-
-            if new_father[index] not in sister:
-                sister.append(new_father[index])
-
-        brother = self.add_depot(brother)
-        sister = self.add_depot(sister)
+        brother = self.generate_solution(brother_order)
+        sister = self.generate_solution(sister_order)
 
         return [brother, sister]
 
@@ -225,34 +235,38 @@ class GeneticAlgorithm:
     
     Returns
     -------
-    :return : list - new configuration with the mutation
+    mutated_individual : list - new configuration with the mutation
     -------
     """
 
     def mutate(self, individual: list) -> list:
-        """ first we remove all previous depots """
-        filtered = [summit for summit in individual if classe(summit) != 'Depot']
+        mutated_individual = deepcopy(individual)
 
-        n = self.NBR_OF_SITES - 1
-        i = rd.randint(0, n - 1)
-        j = rd.randint(i + 1, n)
+        index_vehicle_i = rd.randint(0, self.NBR_OF_VEHICLE - 1)
+        index_vehicle_j = rd.randint(0, self.NBR_OF_VEHICLE - 1)
 
-        summit_i = filtered[i]
-        summit_j = filtered[j]
+        delivery_i = individual[index_vehicle_i]
+        delivery_j = individual[index_vehicle_j]
 
-        result = filtered[:i] + [summit_j] + filtered[i + 1: j] + [summit_i] + filtered[j + 1:]
-        result = self.add_depot(result)
+        index_summit_i = rd.randint(0, len(delivery_i) - 1)
+        index_summit_j = rd.randint(0, len(delivery_j) - 1)
 
-        return result
+        summit_i = delivery_i[index_summit_i]
+        summit_j = delivery_j[index_summit_j]
+
+        mutated_individual[index_vehicle_i][index_summit_i] = summit_j
+        mutated_individual[index_vehicle_j][index_summit_j] = summit_i
+
+        return mutated_individual
 
     """
     Generate the initial population of a certain size, with randomly arranged individuals
 
     Parameters
     ----------
-    :param size: int - the number of individuals in the population
-    :param solution: list - an initial solution to the problem
-    :param proportion: float - the proportion of the given solution in the population
+    size: int - the number of individuals in the population
+    solution: list - an initial solution to the problem
+    proportion: float - the proportion of the given solution in the population
     ----------
     
     Returns
@@ -261,7 +275,7 @@ class GeneticAlgorithm:
     -------
     """
 
-    def generate_population_old(self, initial_solution=None, proportion=0) -> list:
+    def generate_population(self, initial_solution=None, proportion=0) -> list:
         population = []
         population_size = self.POPULATION_SIZE
 
@@ -278,10 +292,25 @@ class GeneticAlgorithm:
 
         return population
 
-    def generate_solution(self):
-        seed = range(1, self.NBR_OF_CUSTOMER + 1)  # as depot's index is 0
+    """
+    Generate a solution to the problem
+    
+    Parameters
+    ----------
+    order: list - the order of the summits to deliver
+    ----------
+    
+    Returns
+    -------
+    solution: list - a randomly generated solution to the problem
+    -------
+    """
 
-        order = rd.sample(seed, k=self.NBR_OF_CUSTOMER)
+    def generate_solution(self, order=None):
+        if order is None:
+            seed = range(1, self.NBR_OF_CUSTOMER + 1)  # as depot's index is 0
+            order = rd.sample(seed, k=self.NBR_OF_CUSTOMER)
+
         solution = []
 
         nbr_of_customer_by_vehicle = self.NBR_OF_CUSTOMER // self.NBR_OF_VEHICLE
@@ -328,44 +357,6 @@ class GeneticAlgorithm:
                 solution[0].append(order[index_order])
 
         return solution
-
-    """
-    Go through the list of summits and add a return to depot everytime it is needed
-    
-    Parameters
-    ----------
-    individual: list - list of all the visited summits from the first to the last visited
-    ----------
-    
-    Returns
-    -------
-    individual_with_depot: list - the same solution but with returns to depot where needed
-    -------
-    """
-
-    def add_depot(self, individual):
-        weight = 0
-        volume = 0
-
-        weight_vehicle = float(self.Vehicles.VEHICLE_TOTAL_WEIGHT_KG)
-        volume_vehicle = float(self.Vehicles.VEHICLE_TOTAL_VOLUME_M3)
-
-        individual_with_depot = [self.Depots]
-
-        for customer in individual:
-            weight += float(customer.TOTAL_WEIGHT_KG)
-            volume += float(customer.TOTAL_VOLUME_M3)
-
-            if weight > weight_vehicle or volume > volume_vehicle:
-                individual_with_depot.append(self.Depots)
-                weight = 0
-                volume = 0
-
-            individual_with_depot.append(customer)
-
-        individual_with_depot.append(self.Depots)
-
-        return individual_with_depot
 
     """
     Draw the graph showing all the customers summits and the depots, with the road taken to go through them
@@ -467,7 +458,4 @@ class GeneticAlgorithm:
         if len(history) < 5:
             return True
 
-        if history[-1] == history[-2] and history[-1] == history[-3]:
-            return False
-
-        return True
+        return history[-1] != history[-2] or history[-1] != history[-3]
