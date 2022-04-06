@@ -354,7 +354,7 @@ def recuit_simulé(x,G,T):
     E_list = [E]
     E_min=E
     fig,axs=plt.subplots(1,2)
-    while E0-E >= 1  : #Tant que la solution retournée diffère d'un km de coût , on continue de chercher
+    while E0-E >= 0.5  : #Tant que la solution retournée diffère d'un km de coût , on continue de chercher
         
         it += 1
         print("iteration",it, "E=",E,"Température =",T)
@@ -449,8 +449,8 @@ def recuit_simulé(x,G,T):
     axs[1].plot(T_list,'o-')
     axs[1].set_title("Température en fonction des itérations")
     fig.suptitle("Profil de la première partie")
-    plt.savefig("Profil de la première partie")
-    plt.show()
+    fig.savefig("Profil de la première partie")
+    fig.show()
     
     ###Assertions de fin###
     
