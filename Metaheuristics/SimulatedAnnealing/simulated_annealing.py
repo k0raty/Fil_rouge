@@ -9,15 +9,16 @@ from tqdm import tqdm
 import math
 import matplotlib.pyplot as plt
 import warnings
-import utm
-from simulated_annealing_initialization import main
+from Metaheuristics.SimulatedAnnealing.simulated_annealing_initialization import main
 
 """ Import utilities """
 from Utility.database import Database
-from Utility.common import compute_distance, compute_fitness, compute_cost_matrix
+from Utility.common import *
 from Utility.validator import check_constraint, check_temps, check_temps_2, check_ressource
 
 warnings.simplefilter(action='ignore', category=FutureWarning)
+
+set_root_dir()
 
 
 class Annealing:
@@ -36,7 +37,7 @@ class Annealing:
             database = Database()
 
             customers = database.Customers
-            vehicles = database.Vehicles[0]
+            vehicles = database.Vehicles
             depots = database.Depots
             cost_matrix = compute_cost_matrix(customers)
 
@@ -45,8 +46,8 @@ class Annealing:
         self.COST_MATRIX = cost_matrix
 
         self.CUSTOMERS = customers
-        self.DEPOTS = depots
-        self.VEHICLES = vehicles
+        self.DEPOTS = depots[0]
+        self.VEHICLES = vehicles[0]
 
         self.NBR_OF_VEHICLES = len(vehicles)
         self.NBR_OF_CUSTOMERS = len(customers)
@@ -150,6 +151,7 @@ class Annealing:
 
     def create_graph(self, df_customers, df_vehicles):
         graph = nx.empty_graph(self.NBR_OF_CUSTOMERS)
+        """
         (x_0, y_0) = utm.from_latlon(43.37391833, 17.60171712)[:2]
         dict_0 = {'CUSTOMER_CODE': 0, 'CUSTOMER_LATITUDE': 43.37391833, 'CUSTOMER_LONGITUDE': 17.60171712,
                   'CUSTOMER_TIME_WINDOW_FROM_MIN': 360, 'CUSTOMER_TIME_WINDOW_TO_MIN': 1080, 'TOTAL_WEIGHT_KG': 0,
@@ -162,9 +164,9 @@ class Annealing:
 
         for i in range(1, len(graph.nodes)):
             dict = df_customers.iloc[i].to_dict()
-            dict['pos'] = utm.from_latlon(dict['CUSTOMER_LATITUDE'], dict['CUSTOMER_LONGITUDE'])[:2]
+            #dict['pos'] = utm.from_latlon(dict['CUSTOMER_LATITUDE'], dict['CUSTOMER_LONGITUDE'])[:2]
             graph.nodes[i].update(dict)
-
+        
         # On rajoute les routes
         for i in range(len(graph.nodes)):
             for j in range(len(graph.nodes)):
@@ -186,7 +188,7 @@ class Annealing:
         plt.title("graphe initial")
         plt.show()
         plt.clf()
-
+        """
         return graph
 
     # G.nodes[i] avec i un entier de 1 à 540 environ pour acceder au données d'un client.

@@ -3,11 +3,12 @@ from csv import reader
 import os
 
 """ Import utilities """
+from Utility.common import set_root_dir
 from Utility.customer import Customer
 from Utility.vehicle import Vehicle
 from Utility.depot import Depot
 
-os.chdir('..')
+set_root_dir()
 
 
 class Database:
@@ -16,7 +17,7 @@ class Database:
     Depots = []
 
     def __init__(self):
-        self.CUSTOMER_PATH = os.path.join('Dataset', 'Tables', 'table_customers_v1.csv')
+        self.CUSTOMER_PATH = os.path.join('Dataset', 'Tables', 'table_customers.csv')
         self.DEPOT_PATH = os.path.join('Dataset', 'Tables', 'table_depots.csv')
         self.VEHICLE_PATH = os.path.join('Dataset', 'Tables', 'table_vehicles.csv')
 

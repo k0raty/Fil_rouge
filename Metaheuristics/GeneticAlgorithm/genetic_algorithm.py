@@ -1,17 +1,17 @@
 """ Import librairies """
 import random as rd
 from math import floor
+from numpy import mean, argmin
 from seaborn import color_palette
 import matplotlib.pyplot as plt
 import matplotlib.lines as lines
 import time
-import os
 
 """ Import utilities """
 from Utility.database import Database
-from Utility.common import compute_cost_matrix, compute_fitness, classe
+from Utility.common import *
 
-os.chdir(os.path.join('', '..'))
+set_root_dir()
 
 
 class GeneticAlgorithm:
@@ -19,7 +19,10 @@ class GeneticAlgorithm:
     TOURNAMENT_SIZE: int = 4
     PENALTY: int = 2
     POPULATION_SIZE: int = 50
-    MAX_ITERATION: int = 50
+    MAX_ITERATION: int = 20
+
+    fitness: float = 0
+    solution: list = None
 
     def __init__(self, customers=None, depots=None, vehicles=None, cost_matrix=None):
         if customers is None:
@@ -29,8 +32,6 @@ class GeneticAlgorithm:
             vehicles = database.Vehicles
             depots = database.Depots
             cost_matrix = compute_cost_matrix(customers, depots[0])
-
-        self.solution = None
 
         nbr_of_summits = len(customers)
 
@@ -96,27 +97,23 @@ class GeneticAlgorithm:
             population = population_mutated
 
             """ Display each generation properties """
-            fitness_sum = 0
+            fitness_list = []
 
-            for index in range(self.POPULATION_SIZE):
-                individual = population[index]
-                fitness_sum += compute_fitness(self.adapt_solution_format(individual), self.COST_MATRIX)
+            for individual in population:
+                fitness_list.append(compute_fitness(self.adapt_solution_format(individual), self.COST_MATRIX))
 
-            fitness_history.append(fitness_sum)
+            fitness_mean = mean(fitness_list)
+            fitness_history.append(fitness_mean)
 
-            print('Iteration {}, fitness sum {}'.format(iteration, fitness_sum))
+            index_min = argmin(fitness_list)
+            solution = population[index_min]
 
-            sorted_population = sorted(population, key=lambda x: compute_fitness(self.adapt_solution_format(x), self.COST_MATRIX))
-            solution = sorted_population[0]
+            print('Iteration {}, fitness {}'.format(iteration, fitness_list[index_min]))
 
             self.solution = self.adapt_solution_format(solution)
 
-            filepath = os.path.join(path, 'img_{}.png'.format(iteration))
-            self.draw_solution(solution, filepath)
-
-        self.draw_fitness(iteration, fitness_history, path)
-
-        return self.solution, compute_fitness(self.solution, self.COST_MATRIX)
+        self.fitness = compute_fitness(self.solution, self.COST_MATRIX)
+        # self.draw_fitness(iteration, fitness_history, path)
 
     """
     Use a stochastic method ("Technique de la roulette") to select individuals from the current generation

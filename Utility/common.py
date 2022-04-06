@@ -1,4 +1,5 @@
 """ Import librairies """
+import os
 from math import pi, cos, sqrt, asin
 import numpy
 
@@ -37,6 +38,7 @@ Parameters
 ----------
 solution: list - list of all the visited sites from the first to the last visited
 cost_matrix: numpy.ndarray - the cost of each travel to use to compute the fitness
+nbr_of_vehicle: int - the number of vehicle used in the given solution
 ----------
 
 Returns
@@ -46,7 +48,7 @@ fitness_score:float - value of the cost of this configuration
 """
 
 
-def compute_fitness(solution: list, cost_matrix: numpy.ndarray) -> float:
+def compute_fitness(solution: list, cost_matrix: numpy.ndarray, nbr_of_vehicle: int = 8) -> float:
     travel_cost = 0
 
     for delivery in solution:
@@ -59,7 +61,6 @@ def compute_fitness(solution: list, cost_matrix: numpy.ndarray) -> float:
             travel_cost += cost_matrix[summit_from][summit_to]
 
     penalty = 5
-    nbr_of_vehicle = 1
     vehicle_cost = penalty * nbr_of_vehicle
 
     return travel_cost + vehicle_cost
@@ -113,6 +114,18 @@ def compute_cost_matrix(customers: list, depot) -> numpy.ndarray:
             cost_matrix[index_j + 1, index_i + 1] = distance_from_i_to_j
 
     return cost_matrix
+
+
+def set_root_dir():
+    current_dir = os.getcwd()
+
+    head, tail = os.path.split(current_dir)
+
+    while tail != 'Fil_rouge' and len(head) > 0:
+        head, tail = os.path.split(head)
+
+    root_dir = os.path.join(head, tail)
+    os.chdir(root_dir)
 
 
 """

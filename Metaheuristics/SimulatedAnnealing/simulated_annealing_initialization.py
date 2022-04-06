@@ -4,23 +4,19 @@ Created on Mon Apr  4 09:20:12 2022
 
 @author: anton
 """
-import utm
-import random
 import math
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
 import matplotlib.pyplot as plt
-import copy
 import networkx as nx
-import random as rd
 import sys
-
+"""
 df_customers = pd.read_excel("table_2_customers_features.xls")
 df_vehicles = pd.read_excel("table_3_cars_features.xls")
 df_vehicles = df_vehicles.drop(['Unnamed: 0'], axis=1)
 df_customers = df_customers.drop(['Unnamed: 0'], axis=1)
-
+"""
 
 def get_distance(z_1, z_2):
     x_1, x_2, y_1, y_2 = z_1[0], z_2[0], z_1[1], z_2[1]
@@ -43,6 +39,7 @@ def create_G(df_customers, df_vehicles, v):
     n_max = len(df_vehicles)  # Le nombre maximum de voitures qu'on mettrai à disposition.
     n_sommet = len(df_customers)
     G = nx.empty_graph(n_sommet)
+    """
     (x_0, y_0) = utm.from_latlon(43.37391833, 17.60171712)[:2]
     dict_0 = {'CUSTOMER_CODE': 0, 'CUSTOMER_LATITUDE': 43.37391833, 'CUSTOMER_LONGITUDE': 17.60171712,
               'CUSTOMER_TIME_WINDOW_FROM_MIN': 360, 'CUSTOMER_TIME_WINDOW_TO_MIN': 1080, 'TOTAL_WEIGHT_KG': 0,
@@ -79,6 +76,7 @@ def create_G(df_customers, df_vehicles, v):
     plt.title("graphe initial")
     plt.show()
     plt.clf()
+    """
     return G
 
 

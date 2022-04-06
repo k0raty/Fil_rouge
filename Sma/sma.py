@@ -3,22 +3,18 @@ from mesa import Agent, Model
 from mesa.time import RandomActivation  # agents activated in random order at each step
 from mesa.datacollection import DataCollector
 import numpy as np
-import os
 
 """ Import utilities """
 from Utility.database import Database
 from Utility.pool import Pool
-from Utility.common import compute_cost_matrix
+from Utility.common import compute_cost_matrix, set_root_dir
 
 """ Import metaheuristics """
 from Metaheuristics.GeneticAlgorithm.genetic_algorithm import GeneticAlgorithm
 from Metaheuristics.Tabou.tabou import Tabou
-from Metaheuristics.SimulatedAnnealing.simulated_annealing import Annealing
+# from Metaheuristics.SimulatedAnnealing.simulated_annealing import Annealing
 
-os.chdir('..')
-
-""" Define problem parameters """
-nbr_of_iteration = 10
+set_root_dir()
 
 """ Define agents """
 
@@ -33,38 +29,52 @@ class AgentMeta(Agent):
         self.meta = meta
 
     def step(self, initial_solution=None):
-        self.solution, self.fitness = self.meta.main(initial_solution)
+        self.meta.main(initial_solution)
+
+        self.solution = self.meta.solution
+        self.fitness = self.meta.fitness
 
 
-""" Define Gini """
+"""
+Define Gini
+
+Parameters
+----------
+model: ModelSma - the model gathering the agents containing the metaheuristics
+----------
+
+Returns 
+-------
+gini: float - the gini score
+-------
+"""
 
 
-def compute_gini(model_sma):
-    agents_fitness = sorted([agent.compute_fitness for agent in model_sma.schedule.agents])
-    nbr_of_agent = model_sma.num_agents
+def compute_gini(model) -> float:
+    agents_fitness = sorted([agent.fitness for agent in model.schedule.agents])
 
     total_fitness = sum(agents_fitness)
 
-    A = nbr_of_agent * total_fitness
-    B = sum(fitness * (nbr_of_agent - index) for index, fitness in enumerate(agents_fitness))
+    A = model.nbr_of_agent * total_fitness
+    B = sum(fitness * (model.nbr_of_agent - index) for index, fitness in enumerate(agents_fitness))
 
-    return 1 + (1 / nbr_of_agent) - 2 * A / B
+    gini = 1 + (1 / model.nbr_of_agent) - 2 * A / B
+
+    return gini
 
 
 """ Define model """
 
 
 class ModelSma(Model):
-    """A model with some number of agents."""
-
-    def __init__(self, nbr_of_genetic, nbr_of_tabou, nbr_of_recuit):
+    def __init__(self, nbr_of_genetic=1, nbr_of_tabou=1, nbr_of_recuit=0):
         self.Database = Database()
 
         customers = self.Database.Customers
         depots = self.Database.Depots
-        vehicles = self.Database.Vehicles[0]
+        vehicles = self.Database.Vehicles
 
-        cost_matrix = compute_cost_matrix(customers)
+        cost_matrix = compute_cost_matrix(customers, depots[0])
 
         self.Pool = Pool()
 
@@ -73,8 +83,8 @@ class ModelSma(Model):
             model_reporters={'Gini': compute_gini},
             agent_reporters={'Wealth': 'fitness'},
         )
+        self.nbr_of_agent = nbr_of_recuit + nbr_of_tabou + nbr_of_genetic
 
-        # Create agents
         for index_agent in range(nbr_of_genetic):
             unique_id = 'genetic_{}'.format(index_agent)
             agent = AgentMeta(unique_id, self, GeneticAlgorithm(customers, depots, vehicles, cost_matrix))
@@ -85,10 +95,12 @@ class ModelSma(Model):
             agent = AgentMeta(unique_id, self, Tabou(customers, depots, vehicles, cost_matrix))
             self.schedule.add(agent)
 
+        """
         for index_agent in range(nbr_of_recuit):
             unique_id = 'recuit_{}'.format(index_agent)
             agent = AgentMeta(unique_id, self, Annealing(customers, depots, vehicles, cost_matrix))
             self.schedule.add(agent)
+        """
 
     def step(self):
         """Advance the model by one step."""
@@ -97,7 +109,9 @@ class ModelSma(Model):
 
 
 """ Run the SMA """
-model_sma = ModelSma(nbr_of_iteration)
+nbr_of_iteration = 3
+
+model_sma = ModelSma(nbr_of_genetic=1, nbr_of_tabou=1)
 
 for iteration in range(nbr_of_iteration):
     model_sma.step()

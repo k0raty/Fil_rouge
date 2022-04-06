@@ -1,13 +1,12 @@
 """ Import librairies """
 from copy import deepcopy
-import os
 import random as rd
 
 """ Import utilities """
 from Utility.database import Database
-from Utility.common import compute_cost_matrix, compute_fitness, compute_distance
+from Utility.common import *
 
-os.chdir(os.path.join('', '..'))
+set_root_dir()
 
 
 class Tabou:
@@ -17,6 +16,10 @@ class Tabou:
     VEHICLE_SPEED = 50
     VEHICLE_CAPACITY = 5000
 
+    fitness: float = 0
+    solution: list = None
+    tabou_list: list = []
+
     def __init__(self, customers=None, depots=None, vehicles=None, cost_matrix=None):
         if customers is None:
             database = Database()
@@ -25,8 +28,6 @@ class Tabou:
             vehicles = database.Vehicles
             depots = database.Depots
             cost_matrix = compute_cost_matrix(customers, depots[0])
-
-        self.solution = None
 
         nbr_of_customers = len(customers)
 
@@ -66,8 +67,7 @@ class Tabou:
             print('Iteration {}, fitness {}'.format(iteration, fitness))
 
         self.solution = solution
-
-        return self.solution, fitness
+        self.fitness = fitness
 
     """
     Find the best solution in the close neighborhood of the given solution
@@ -83,15 +83,19 @@ class Tabou:
     fitness: float - the fitness score of the best neighbor of the given solution
     """
 
-    def find_best_neighbor(self, initial_solution):
+    def find_best_neighbor(self, initial_solution: list):
         solution = initial_solution
         fitness = compute_fitness(initial_solution, self.COST_MATRIX)
 
         for iteration in range(self.MAX_NEIGHBORS):
-            neighbor = self.find_neighbor(initial_solution)
+            neighbor, inversion_couple = self.find_neighbor(initial_solution)
             neighbor_fitness = compute_fitness(neighbor, self.COST_MATRIX)
 
-            if neighbor_fitness >= fitness and self.is_solution_valid(neighbor):
+            is_fitness_better = neighbor_fitness >= fitness
+            is_solution_valid = self.is_solution_valid(neighbor)
+            is_couple_new = inversion_couple not in self.tabou_list
+
+            if is_fitness_better and is_solution_valid and is_couple_new:
                 solution = neighbor
                 fitness = neighbor_fitness
 
@@ -108,6 +112,7 @@ class Tabou:
     Returns
     -------
     neighbor: list - a new solution close to the given one
+    inversion_couple: tuple - the 2 summits that were inverted to add to the tabou list
     -------
     """
 
@@ -126,7 +131,7 @@ class Tabou:
         length_delivery_i = len(delivery_i)
         length_delivery_j = len(delivery_j)
 
-        if length_delivery_i >= 3 and length_delivery_j >= 3:
+        if length_delivery_i > 2 and length_delivery_j > 2:
             index_summit_i = rd.randint(1, length_delivery_i - 1)
             index_summit_j = rd.randint(1, length_delivery_j - 1)
 
@@ -136,7 +141,9 @@ class Tabou:
             neighbor[index_delivery_i][index_summit_i] = summit_j
             neighbor[index_delivery_j][index_summit_j] = summit_i
 
-        return neighbor
+            inversion_couple = (index_delivery_i, index_delivery_j, summit_i, summit_j)
+
+        return neighbor, inversion_couple
 
     """
     Check if a solution match the validity criteria 

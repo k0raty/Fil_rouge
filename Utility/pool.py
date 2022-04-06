@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 class Pool:
     pool = []
 
-    def __init__(self, pr):
+    def __init__(self, pr=10):
         self.pr = pr
 
     """Calcule le paramètre lambda qui donne le nombre d'arcs non-communs entre les deux solutions"""
