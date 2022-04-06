@@ -35,7 +35,6 @@ df_customers= pd.read_excel("table_2_customers_features.xls")
 df_vehicles=pd.read_excel("table_3_cars_features.xls")
 df_vehicles=df_vehicles.drop(['Unnamed: 0'],axis=1)
 df_customers=df_customers.drop(['Unnamed: 0'],axis=1)
-df_ordre_init=pd.read_pickle("df_ordre_init.pkl")
 
 def create_G(df_customers,df_vehicles,v):
     """
