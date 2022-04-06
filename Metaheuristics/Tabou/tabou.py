@@ -5,7 +5,7 @@ import random as rd
 
 """ Import utilities """
 from Utility.database import Database
-from Utility.common import compute_cost_matrix, compute_fitness, distance
+from Utility.common import compute_cost_matrix, compute_fitness, compute_distance
 
 os.chdir(os.path.join('', '..'))
 
@@ -24,7 +24,7 @@ class Tabou:
             customers = database.Customers
             vehicles = database.Vehicles
             depots = database.Depots
-            cost_matrix = compute_cost_matrix(customers)
+            cost_matrix = compute_cost_matrix(customers, depots[0])
 
         self.solution = None
 
@@ -36,7 +36,7 @@ class Tabou:
         self.PROBA_MUTATION = 1 / nbr_of_customers
 
         self.Customers = customers
-        self.Depots = depots
+        self.Depot = depots[0]
         self.Vehicles = vehicles[0]
 
     """
@@ -85,11 +85,11 @@ class Tabou:
 
     def find_best_neighbor(self, initial_solution):
         solution = initial_solution
-        fitness = compute_fitness(initial_solution)
+        fitness = compute_fitness(initial_solution, self.COST_MATRIX)
 
         for iteration in range(self.MAX_NEIGHBORS):
             neighbor = self.find_neighbor(initial_solution)
-            neighbor_fitness = compute_fitness(neighbor)
+            neighbor_fitness = compute_fitness(neighbor, self.COST_MATRIX)
 
             if neighbor_fitness >= fitness and self.is_solution_valid(neighbor):
                 solution = neighbor
@@ -183,30 +183,32 @@ class Tabou:
 
         nbr_of_summit = len(delivery)
 
+        # we don't look at the arc with the depot
         for index_summit in range(1, nbr_of_summit - 1):
-            summit = self.Customers[delivery[index_summit]]
+            summit = delivery[index_summit]
+            customer = self.Customers[summit - 1]
 
-            package_weight = summit.TOTAL_WEIGHT_KG
+            weight += customer.TOTAL_WEIGHT_KG
 
-            if nbr_of_summit >= 2:
-                summit_i = self.Customers[delivery[nbr_of_summit - 1]]
-                summit_j = self.Customers[delivery[nbr_of_summit - 2]]
+            if nbr_of_summit > 1:
+                previous_summit = delivery[index_summit - 1]
+                previous_customer = self.Customers[previous_summit - 1]
 
-                dist = distance(summit_i.LATITUDE, summit_i.LONGITUDE, summit_j.LATITUDE, summit_j.LONGITUDE)
+                dist = compute_distance(
+                    previous_customer.LATITUDE,
+                    previous_customer.LONGITUDE,
+                    customer.LATITUDE,
+                    customer.LONGITUDE,
+                )
 
                 time += dist / self.VEHICLE_SPEED / 60
 
-            time_min = summit.CUSTOMER_TIME_WINDOW_FROM_MIN
-            time_max = summit.CUSTOMER_TIME_WINDOW_TO_MIN
-
-            weight_criteria = package_weight > self.VEHICLE_CAPACITY
-            time_criteria = time_min > time or time > time_max
+            weight_criteria = weight > self.VEHICLE_CAPACITY
+            time_criteria = customer.CUSTOMER_TIME_WINDOW_FROM_MIN > time \
+                            or time > customer.CUSTOMER_TIME_WINDOW_TO_MIN
 
             if weight_criteria or time_criteria:
                 return False
-
-            else:
-                weight += package_weight
 
         return True
 
@@ -244,13 +246,14 @@ class Tabou:
             if len(delivery) > 1:
                 previous_customer = self.Customers[delivery[-1]]
 
-                dist = distance(previous_customer.LATITUDE, previous_customer.LONGITUDE, customer.LATITUDE, customer.LONGITUDE)
+                dist = compute_distance(previous_customer.LATITUDE, previous_customer.LONGITUDE, customer.LATITUDE,
+                                        customer.LONGITUDE)
 
                 time_to_new_customer = dist / self.VEHICLE_SPEED / 60
 
                 potential_current_time += time_to_new_customer
 
-            if customer.CUSTOMER_TIME_WINDOW_FROM_MIN > potential_current_time\
+            if customer.CUSTOMER_TIME_WINDOW_FROM_MIN > potential_current_time \
                     or potential_current_time > customer.CUSTOMER_TIME_WINDOW_TO_MIN:
                 continue
 
@@ -258,6 +261,9 @@ class Tabou:
             weight += customer.TOTAL_WEIGHT_KG
             delivery.append(customer.INDEX)
             delivered_customers.append(customer.INDEX)
+
+            if weight >= self.VEHICLE_CAPACITY:
+                break
 
         delivery.append(0)
 

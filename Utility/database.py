@@ -23,7 +23,6 @@ class Database:
         self.refresh()
 
     def refresh(self):
-        print('current path', os.getcwd())
         self.Customers = []
         self.Vehicles = []
         self.Depots = []

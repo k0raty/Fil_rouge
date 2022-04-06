@@ -14,7 +14,7 @@ from simulated_annealing_initialization import main
 
 """ Import utilities """
 from Utility.database import Database
-from Utility.common import distance, compute_fitness, compute_cost_matrix
+from Utility.common import compute_distance, compute_fitness, compute_cost_matrix
 from Utility.validator import check_constraint, check_temps, check_temps_2, check_ressource
 
 warnings.simplefilter(action='ignore', category=FutureWarning)

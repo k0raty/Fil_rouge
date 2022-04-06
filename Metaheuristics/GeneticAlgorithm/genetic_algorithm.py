@@ -9,7 +9,7 @@ import os
 
 """ Import utilities """
 from Utility.database import Database
-from Utility.common import compute_cost_matrix, distance, classe  # , fitness
+from Utility.common import compute_cost_matrix, compute_distance, classe  # , fitness
 
 os.chdir(os.path.join('', '..'))
 
@@ -32,12 +32,12 @@ class GeneticAlgorithm:
 
         self.solution = None
 
-        nbr_of_sites = len(customers)
+        nbr_of_summits = len(customers)
 
         self.COST_MATRIX = cost_matrix
         self.NBR_OF_VEHICLES = len(vehicles)
-        self.NBR_OF_SITES = nbr_of_sites
-        self.PROBA_MUTATION = 1 / nbr_of_sites
+        self.NBR_OF_SITES = nbr_of_summits
+        self.PROBA_MUTATION = 1 / nbr_of_summits
 
         self.Customers = customers
         self.Depots = depots
@@ -160,19 +160,19 @@ class GeneticAlgorithm:
         """ first we remove all previous depots """
         new_father = []
 
-        for index_site in range(len(father)):
-            site = father[index_site]
+        for index_summit in range(len(father)):
+            summit = father[index_summit]
 
-            if classe(site) != 'Depot':
-                new_father.append(site)
+            if classe(summit) != 'Depot':
+                new_father.append(summit)
 
         new_mother = []
 
-        for index_site in range(len(mother)):
-            site = mother[index_site]
+        for index_summit in range(len(mother)):
+            summit = mother[index_summit]
 
-            if classe(site) != 'Depot':
-                new_mother.append(site)
+            if classe(summit) != 'Depot':
+                new_mother.append(summit)
 
         point = rd.randint(0, self.NBR_OF_SITES)
 
@@ -192,32 +192,32 @@ class GeneticAlgorithm:
         return [brother, sister]
 
     """
-    Apply a mutation to a configuration by inverting 2 sites
+    Apply a mutation to a configuration by inverting 2 summits
 
-    :param individual: list - list of all the visited sites from the first to the last visited
+    :param individual: list - list of all the visummitd summits from the first to the last visummitd
     :return : list - new configuration with the mutation
     """
     def mutate(self, individual: list) -> list:
         """ first we remove all previous depots """
-        filtered = [site for site in individual if classe(site) != 'Depot']
+        filtered = [summit for summit in individual if classe(summit) != 'Depot']
 
         n = self.NBR_OF_SITES - 1
         i = rd.randint(0, n - 1)
         j = rd.randint(i + 1, n)
 
-        site_i = filtered[i]
-        site_j = filtered[j]
+        summit_i = filtered[i]
+        summit_j = filtered[j]
 
-        result = filtered[:i] + [site_j] + filtered[i + 1: j] + [site_i] + filtered[j + 1:]
+        result = filtered[:i] + [summit_j] + filtered[i + 1: j] + [summit_i] + filtered[j + 1:]
         result = self.add_depot(result)
 
         return result
 
     """
-    Evaluate the cost of visiting sites with this configuration, depending on the number of cars
-    and the cost from one site to the next one
+    Evaluate the cost of visiting summits with this configuration, depending on the number of cars
+    and the cost from one summit to the next one
 
-    :param individual: list - list of all the visited sites from the first to the last visited
+    :param individual: list - list of all the visummitd summits from the first to the last visummitd
     :return fitness_score: float - value of the cost of this configuration
     """
     def fitness(self, individual: list) -> float:
@@ -228,19 +228,15 @@ class GeneticAlgorithm:
         individual_len = len(individual)
 
         for index in range(individual_len - 1):
-            site_from = individual[index]
-            site_to = individual[index + 1]
+            summit_from = individual[index]
+            summit_to = individual[index + 1]
 
-            if classe(site_from) != 'Depot' and classe(site_to) != 'Depot':
-                travel_cost += self.COST_MATRIX[site_from.INDEX - 1, site_to.INDEX - 1]
+            if classe(summit_from) != 'Depot' and classe(summit_to) != 'Depot':
+                travel_cost += self.COST_MATRIX[summit_from.INDEX - 1, summit_to.INDEX - 1]
 
             else:
-                travel_cost += distance(
-                    site_to.LATITUDE,
-                    site_to.LONGITUDE,
-                    site_from.LATITUDE,
-                    site_from.LONGITUDE,
-                )
+                travel_cost += compute_distance(summit_to.LATITUDE, summit_to.LONGITUDE, summit_from.LATITUDE,
+                                                summit_from.LONGITUDE)
 
         return vehicle_cost + travel_cost
 
@@ -282,9 +278,9 @@ class GeneticAlgorithm:
         return population
 
     """
-    Go through the list of sites and add a return to depot everytime the car is empty
+    Go through the list of summits and add a return to depot everytime the car is empty
     
-    :param individual: list - list of all the visited sites from the first to the last visited
+    :param individual: list - list of all the visummitd summits from the first to the last visummitd
     """
     def add_depot(self, individual):
         weight = 0
@@ -311,7 +307,7 @@ class GeneticAlgorithm:
         return result
 
     """
-    Draw the graph showing all the customers sites and the depots, with the road taken to go through them
+    Draw the graph showing all the customers summits and the depots, with the road taken to go through them
     
     :param solution: list - an individual of the population with the lowest fitness score
     """
@@ -325,23 +321,23 @@ class GeneticAlgorithm:
         latitudes = []
         longitudes = []
 
-        for index_site in range(len(solution)):
-            site = solution[index_site]
+        for index_summit in range(len(solution)):
+            summit = solution[index_summit]
 
-            if site.INDEX != 0:
-                latitudes.append(site.LATITUDE)
-                longitudes.append(site.LONGITUDE)
+            if summit.INDEX != 0:
+                latitudes.append(summit.LATITUDE)
+                longitudes.append(summit.LONGITUDE)
 
-                plt.annotate("{}".format(index_site),
-                             (site.LATITUDE, site.LONGITUDE),
+                plt.annotate("{}".format(index_summit),
+                             (summit.LATITUDE, summit.LONGITUDE),
                              textcoords="offset points",
                              xytext=(0, 10),
                              ha='center',
                              )
 
             else:
-                latitudes.append(site.LATITUDE)
-                longitudes.append(site.LONGITUDE)
+                latitudes.append(summit.LATITUDE)
+                longitudes.append(summit.LONGITUDE)
 
                 if vehicle_working < self.NBR_OF_VEHICLES - 1:
                     vehicle_working += 1
@@ -420,13 +416,13 @@ class GeneticAlgorithm:
         formatted_solution = [[]]
         delivery_index = 0
 
-        for site in solution:
-            if site.INDEX == 0:
-                formatted_solution[delivery_index].append(site.INDEX)
-                formatted_solution.append([site.INDEX])
+        for summit in solution:
+            if summit.INDEX == 0:
+                formatted_solution[delivery_index].append(summit.INDEX)
+                formatted_solution.append([summit.INDEX])
                 delivery_index += 1
 
             else:
-                formatted_solution[delivery_index].append(site.INDEX)
+                formatted_solution[delivery_index].append(summit.INDEX)
 
         return formatted_solution
