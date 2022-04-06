@@ -275,7 +275,7 @@ class GeneticAlgorithm:
     -------
     """
 
-    def generate_population(self, initial_solution=None, proportion=0) -> list:
+    def generate_population(self, initial_solution=None, proportion=0.05) -> list:
         population = []
         population_size = self.POPULATION_SIZE
 

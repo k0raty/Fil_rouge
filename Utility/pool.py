@@ -1,11 +1,19 @@
+""" Import librairies """
 import matplotlib.pyplot as plt
+import numpy as np
+
+""" Import utilities """
+from Utility.common import compute_fitness
 
 
 class Pool:
     pool = []
 
-    def __init__(self, pr=10):
-        self.pr = pr
+    def __init__(self, cost_matrix, vehicles, pool_max_size=10, pr=10):
+        self.COST_MATRIX = cost_matrix
+        self.Vehicles = vehicles
+        self.PR = pr
+        self.POOL_MAX_SIZE = pool_max_size
 
     """Calcule le paramètre lambda qui donne le nombre d'arcs non-communs entre les deux solutions"""
 
@@ -37,37 +45,51 @@ class Pool:
     def distance_between_solution(self, solution_1, solution_2):
         coeff_lambda = self.count_shared_arc(solution_1, solution_2)
 
-        if coeff_lambda <= self.pr:
-            return 1 - (coeff_lambda / self.pr)
+        if coeff_lambda <= self.PR:
+            return 1 - (coeff_lambda / self.PR)
 
         return 0
 
     """ 
     Évalue la proximité de solutions S d'un pool avec la solution L.
     Plus la somme est grande, plus les solutions sont proches, et donc il faudra en supprimer
-    S: Pool de solutions (ex:[S1,S2,...])
-    L: Une solution qui pourrait être ajoutée au pool         
+    
+    Parameters
+    ----------
+    new_solution: list - a solution given by a metaheuristic
+    ----------
     """
 
-    def assert_injection_in_pool(self, new_solution):
-        total_distance = 0
-        neighborhood = []
-
+    def inject_in_pool(self, new_solution, new_fitness):
         pool_occupation = len(self.pool)
+
+        if pool_occupation < self.POOL_MAX_SIZE:
+            self.pool.append(new_solution)
+            return
+
+        index_candidate = -1
+        fitness_candidate = np.inf
 
         for index_solution in range(pool_occupation):
             solution = self.pool[index_solution]
+
+            fitness = compute_fitness(solution, self.COST_MATRIX, self.Vehicles)
+
+            if fitness > new_fitness:
+                continue
+
             distance = self.distance_between_solution(new_solution, solution)
 
-            # si la solution S[j] est jugée "trop proche" de L
-            if distance <= self.pr:
-                # indices des solutions proches selon le critère pr
-                neighborhood.append(index_solution)
+            if distance <= self.PR:
+                continue
 
-            # somme des phi entre la liste L et les différentes solutions présentes dans S
-            total_distance += distance
+            if fitness < fitness_candidate:
+                index_candidate = index_solution
+                fitness_candidate = fitness
 
-        return total_distance, neighborhood
+        if index_candidate > -1:
+            self.pool[index_candidate] = new_solution
+            self.pool = sorted(self.pool, key=lambda x: compute_fitness(x, self.COST_MATRIX, self.Vehicles))
 
     """ Trace le graphe représentant la distance des solutions contenues dans S à la solution L """
 
@@ -79,7 +101,7 @@ class Pool:
 
         plt.scatter(X, Y, s=100, alpha=0.5)
         plt.scatter(1, 0, s=150, c='red')
-        plt.axhline(self.pr, color='black', linestyle='dashdot')
+        plt.axhline(self.PR, color='black', linestyle='dashdot')
 
         plt.title("Graphe de similarité entre la solution L et le pool de solutions S")
         plt.ylabel('$\lambda_{new solution - solutions in the pool}$')
