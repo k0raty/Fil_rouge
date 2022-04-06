@@ -56,6 +56,7 @@ def permutation(x,y,ordre):
         yo = [ y[o] for o in ordre + [ordre[0]]]
         plt.plot(xo,yo, "o-")
         plt.plot(xo[0],y[0],"r")
+        plt.title("Phase d'initialisation")
         plt.show()
         
     return ordre
