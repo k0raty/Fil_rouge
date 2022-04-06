@@ -260,8 +260,8 @@ class GeneticAlgorithm:
         if solution is not None:
             initial_solution = []
 
-            for sub_road in solution:
-                initial_solution.append(*[customer for customer in sub_road if not 0])
+            for delivery in solution:
+                initial_solution.append(*[customer for customer in delivery if not 0])
 
             nbr_of_solution = int(proportion * population_size)
 
@@ -418,15 +418,15 @@ class GeneticAlgorithm:
     @staticmethod
     def adapt_solution_format(solution):
         formatted_solution = [[]]
-        sub_road_index = 0
+        delivery_index = 0
 
         for site in solution:
             if site.INDEX == 0:
-                formatted_solution[sub_road_index].append(site.INDEX)
+                formatted_solution[delivery_index].append(site.INDEX)
                 formatted_solution.append([site.INDEX])
-                sub_road_index += 1
+                delivery_index += 1
 
             else:
-                formatted_solution[sub_road_index].append(site.INDEX)
+                formatted_solution[delivery_index].append(site.INDEX)
 
         return formatted_solution

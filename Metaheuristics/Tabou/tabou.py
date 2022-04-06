@@ -63,6 +63,8 @@ class Tabou:
         for iteration in range(self.MAX_ITERATION):
             solution, fitness = self.find_best_neighbor(solution)
 
+            print('Iteration {}, fitness {}'.format(iteration, fitness))
+
         self.solution = solution
 
         return self.solution, fitness
@@ -209,9 +211,7 @@ class Tabou:
         return True
 
     """
-    Crée une livraison pour un camion donné selon les paramètres définis:
-    horaires de livraison respectées
-    masse maximale des camions non dépassées
+    Generate a delivery for a portion of the solution, accordingly to the time and weigh constraints
 
     Parameters
     ----------
@@ -223,6 +223,7 @@ class Tabou:
     delivered_customers: list - the list of the customers indexes who have been delivered so far in the solution
     delivery: list - a portion of the solution
     """
+
     def generate_delivery(self, delivered_customers):
         weight = 0
         delivery = [0]
@@ -238,32 +239,25 @@ class Tabou:
             if weight + customer.TOTAL_WEIGHT_KG > self.VEHICLE_CAPACITY:
                 continue
 
+            potential_current_time = current_time
+
+            if len(delivery) > 1:
+                previous_customer = self.Customers[delivery[-1]]
+
+                dist = distance(previous_customer.LATITUDE, previous_customer.LONGITUDE, customer.LATITUDE, customer.LONGITUDE)
+
+                time_to_new_customer = dist / self.VEHICLE_SPEED / 60
+
+                potential_current_time += time_to_new_customer
+
+            if customer.CUSTOMER_TIME_WINDOW_FROM_MIN > potential_current_time\
+                    or potential_current_time > customer.CUSTOMER_TIME_WINDOW_TO_MIN:
+                continue
+
+            current_time = potential_current_time
             weight += customer.TOTAL_WEIGHT_KG
             delivery.append(customer.INDEX)
             delivered_customers.append(customer.INDEX)
-
-            if not (customer.INDEX in delivered_customers):
-                package_weight = customer.TOTAL_WEIGHT_KG
-
-                m = len(delivery)
-
-                if m >= 2:
-                    customer_i = self.Customers[index_customer_i]
-                    customer_j = self.Customers[index_customer_j]
-
-                    dist = distance(customer_i.LATITUDE, customer_i.LONGITUDE, customer_j.LATITUDE, customer_j.LONGITUDE)
-
-                    time_from_i_to_j = dist / self.VEHICLE_SPEED / 60
-
-                    total_time = current_time + time_from_i_to_j
-
-                time_min = customer.CUSTOMER_TIME_WINDOW_FROM_MIN
-                time_max = customer.CUSTOMER_TIME_WINDOW_TO_MIN
-
-                if weight + package_weight < self.VEHICLE_CAPACITY and time_min <= total_time <= time_max:
-
-
-                current_time += time_from_i_to_j
 
         delivery.append(0)
 
@@ -282,16 +276,17 @@ class Tabou:
     solution: list - a solution of the problem containing all the deliveries to be done
     -------
     """
+
     def initialisation(self):
         solution = []
-        all_treated_lines = []
+        delivered_customers = []
 
-        while len(all_treated_lines) < self.NBR_OF_CUSTOMERS - 1:
-            all_treated_lines, delivery = self.generate_delivery(all_treated_lines)
+        while len(delivered_customers) < self.NBR_OF_CUSTOMERS:
+            delivered_customers, delivery = self.generate_delivery(delivered_customers)
 
             solution.append(delivery)
 
             # post-processing to remove duplicated customers
-            all_treated_lines = list(set(all_treated_lines))
+            delivered_customers = list(set(delivered_customers))
 
         return solution

@@ -91,37 +91,37 @@ class Annealing:
     """
 
     def energy_of_solution(self, solution, graph):
-        nbr_of_sub_road = len(solution)
+        nbr_of_delivery = len(solution)
         energy = 0
 
-        for index in range(nbr_of_sub_road):
-            sub_road = solution[index]
-            energy += self.energy_of_sub_road(sub_road, graph, index)
+        for index in range(nbr_of_delivery):
+            delivery = solution[index]
+            energy += self.energy_of_delivery(delivery, graph, index)
 
         return energy
 
     """
-    Compute the energy of the sub road of a given solution
+    Compute the energy of the delivery of a given solution
 
     Parameters
     ----------
-    sub_road: list - portion of a solution
+    delivery: list - portion of a solution
     graph: ? - problem's graph
-    index_vehicle: int - the index of the vehicle on this sub road
+    index_vehicle: int - the index of the vehicle on this delivery
 
     Returns
     -------
-    energy: float - the energy of the sub road
+    energy: float - the energy of the delivery
     """
 
-    def energy_of_sub_road(self, sub_road, graph, index_vehicle):
+    def energy_of_delivery(self, delivery, graph, index_vehicle):
         energy = 0
-        nbr_of_summit = len(sub_road)
+        nbr_of_summit = len(delivery)
 
-        # if sub_road is not empty
+        # if delivery is not empty
         if nbr_of_summit > 2:
             w = graph.nodes[0]['Camion']['VEHICLE_VARIABLE_COST_KM'][index_vehicle]
-            weights = [graph[sub_road[summit]][sub_road[summit + 1]]['weight'] for summit in range(nbr_of_summit - 1)]
+            weights = [graph[delivery[summit]][delivery[summit + 1]]['weight'] for summit in range(nbr_of_summit - 1)]
             weight_road = sum(weights)
 
             energy = w * weight_road
@@ -391,10 +391,10 @@ class Annealing:
                             x[camion_ajout].insert(nouvelle_place, j)
                             x[camion_retire].remove(j)
 
-                    E1 = self.energy_of_sub_road(x[camion_ajout], G, camion_ajout)
-                    E2 = self.energy_of_sub_road(x[camion_retire], G, camion_retire)
-                    E3 = self.energy_of_sub_road(very_old_x[camion_ajout], G, camion_ajout)
-                    E4 = self.energy_of_sub_road(very_old_x[camion_retire], G, camion_retire)
+                    E1 = self.energy_of_delivery(x[camion_ajout], G, camion_ajout)
+                    E2 = self.energy_of_delivery(x[camion_retire], G, camion_retire)
+                    E3 = self.energy_of_delivery(very_old_x[camion_ajout], G, camion_ajout)
+                    E4 = self.energy_of_delivery(very_old_x[camion_retire], G, camion_retire)
 
                     if (E1 + E2 >= E3 + E4):
                         p = np.exp(-(E1 + E2 - (E3 + E4)) / (k * T))
@@ -482,11 +482,11 @@ class Annealing:
                 for i in range(1, len(route) - 1):
 
                     for j in range(i + 2, len(route)):
-                        d_part = self.energy_of_sub_road(route, graph, camion)
+                        d_part = self.energy_of_delivery(route, graph, camion)
                         r = route[i:j].copy()
                         r.reverse()
                         route2 = route[:i] + r + route[j:]
-                        t = self.energy_of_sub_road(route2, graph, camion)
+                        t = self.energy_of_delivery(route2, graph, camion)
 
                         if (t < d_part):
                             if check_temps_2(route2, graph) == True:
