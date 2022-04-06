@@ -9,7 +9,7 @@ import os
 
 """ Import utilities """
 from Utility.database import Database
-from Utility.common import compute_cost_matrix, compute_distance, classe  # , fitness
+from Utility.common import compute_cost_matrix, compute_fitness, classe
 
 os.chdir(os.path.join('', '..'))
 
@@ -28,7 +28,7 @@ class GeneticAlgorithm:
             customers = database.Customers
             vehicles = database.Vehicles
             depots = database.Depots
-            cost_matrix = compute_cost_matrix(customers)
+            cost_matrix = compute_cost_matrix(customers, depots[0])
 
         self.solution = None
 
@@ -40,7 +40,7 @@ class GeneticAlgorithm:
         self.PROBA_MUTATION = 1 / nbr_of_summits
 
         self.Customers = customers
-        self.Depots = depots
+        self.Depots = depots[0]
         self.Vehicles = vehicles[0]
 
     """
@@ -75,6 +75,7 @@ class GeneticAlgorithm:
                     children = self.pmx_cross_over(father, mother)  # other methods available
                     population_crossed.append(children[0])
                     population_crossed.append(children[1])
+
                 else:
                     population_crossed.append(father)
                     population_crossed.append(mother)
@@ -88,6 +89,7 @@ class GeneticAlgorithm:
                 if rd.random() < self.PROBA_MUTATION:
                     element_mutated = self.mutate(element)
                     population_mutated.append(element_mutated)
+
                 else:
                     population_mutated.append(element)
 
@@ -98,12 +100,13 @@ class GeneticAlgorithm:
 
             for index in range(self.POPULATION_SIZE):
                 individual = population[index]
-                fitness_sum += self.fitness(individual)
+                fitness_sum += compute_fitness(self.adapt_solution_format(individual), self.COST_MATRIX)
 
             fitness_history.append(fitness_sum)
+
             print('Iteration {}, fitness sum {}'.format(iteration, fitness_sum))
 
-            sorted_population = sorted(population, key=lambda x: self.fitness(x))
+            sorted_population = sorted(population, key=lambda x: compute_fitness(self.adapt_solution_format(x), self.COST_MATRIX))
             solution = sorted_population[0]
 
             self.solution = self.adapt_solution_format(solution)
@@ -113,21 +116,29 @@ class GeneticAlgorithm:
 
         self.draw_fitness(iteration, fitness_history, path)
 
-        return self.solution, self.fitness(self.solution)
+        return self.solution, compute_fitness(self.solution, self.COST_MATRIX)
 
     """
     Use a stochastic method ("Technique de la roulette") to select individuals from the current generation
     to build the next generation
 
-    :param population: list - current population
-    :return population_survivors: list - selected population
+    Parameters
+    ----------
+    population: list - current population
+    ----------
+    
+    Returns
+    -------
+    population_survivors: list - selected population
+    -------
     """
+
     def stochastic_selection(self, population: list) -> list:
         population_survivors = []
 
         while len(population_survivors) != self.POPULATION_SIZE:
             contestants = rd.choices(population, k=self.TOURNAMENT_SIZE)
-            contestants = sorted(contestants, key=lambda x: self.fitness(x))
+            contestants = sorted(contestants, key=lambda x: compute_fitness(self.adapt_solution_format(x), self.COST_MATRIX))
             winner = contestants[0]
             population_survivors.append(winner)
 
@@ -144,7 +155,7 @@ class GeneticAlgorithm:
     :return population_survivors: list - selected population
     """
     def determinist_selection(self, population: list) -> list:
-        population_survivors = sorted(population, key=lambda x: self.fitness(x))
+        population_survivors = sorted(population, key=lambda x: compute_fitness(self.adapt_solution_format(x), self.COST_MATRIX))
         population_survivors = population_survivors[:self.POPULATION_SIZE - self.TOURNAMENT_SIZE]
         population_survivors = rd.choices(population_survivors, k=self.POPULATION_SIZE)
         return population_survivors
@@ -214,33 +225,6 @@ class GeneticAlgorithm:
         return result
 
     """
-    Evaluate the cost of visiting summits with this configuration, depending on the number of cars
-    and the cost from one summit to the next one
-
-    :param individual: list - list of all the visummitd summits from the first to the last visummitd
-    :return fitness_score: float - value of the cost of this configuration
-    """
-    def fitness(self, individual: list) -> float:
-        vehicle_cost = self.PENALTY * self.nbr_of_vehicles(individual)
-
-        travel_cost = 0
-
-        individual_len = len(individual)
-
-        for index in range(individual_len - 1):
-            summit_from = individual[index]
-            summit_to = individual[index + 1]
-
-            if classe(summit_from) != 'Depot' and classe(summit_to) != 'Depot':
-                travel_cost += self.COST_MATRIX[summit_from.INDEX - 1, summit_to.INDEX - 1]
-
-            else:
-                travel_cost += compute_distance(summit_to.LATITUDE, summit_to.LONGITUDE, summit_from.LATITUDE,
-                                                summit_from.LONGITUDE)
-
-        return vehicle_cost + travel_cost
-
-    """
     Generate the initial population of a certain size, with randomly arranged individuals
 
     :param size: int - the number of individuals in the population
@@ -278,10 +262,19 @@ class GeneticAlgorithm:
         return population
 
     """
-    Go through the list of summits and add a return to depot everytime the car is empty
+    Go through the list of summits and add a return to depot everytime it is needed
     
-    :param individual: list - list of all the visummitd summits from the first to the last visummitd
+    Parameters
+    ----------
+    individual: list - list of all the visited summits from the first to the last visited
+    ----------
+    
+    Returns
+    -------
+    individual_with_depot: list - the same solution but with returns to depot where needed
+    -------
     """
+
     def add_depot(self, individual):
         weight = 0
         volume = 0
@@ -289,28 +282,32 @@ class GeneticAlgorithm:
         weight_vehicle = float(self.Vehicles.VEHICLE_TOTAL_WEIGHT_KG)
         volume_vehicle = float(self.Vehicles.VEHICLE_TOTAL_VOLUME_M3)
 
-        result = [self.Depots[0]]
+        individual_with_depot = [self.Depots]
 
         for customer in individual:
             weight += float(customer.TOTAL_WEIGHT_KG)
             volume += float(customer.TOTAL_VOLUME_M3)
 
             if weight > weight_vehicle or volume > volume_vehicle:
-                result.append(self.Depots[0])
+                individual_with_depot.append(self.Depots)
                 weight = 0
                 volume = 0
 
-            result.append(customer)
+            individual_with_depot.append(customer)
 
-        result.append(self.Depots[0])
+        individual_with_depot.append(self.Depots)
 
-        return result
+        return individual_with_depot
 
     """
     Draw the graph showing all the customers summits and the depots, with the road taken to go through them
     
-    :param solution: list - an individual of the population with the lowest fitness score
+    Parameters
+    ----------
+    solution: list - an individual of the population with the lowest fitness score
+    ----------
     """
+
     def draw_solution(self, solution, filepath):
         plt.figure(figsize=[25, 15])
 
@@ -357,7 +354,7 @@ class GeneticAlgorithm:
                 latitudes = []
                 longitudes = []
 
-        plt.plot(self.Depots[0].LATITUDE, self.Depots[0].LONGITUDE, 'rs')
+        plt.plot(self.Depots.LATITUDE, self.Depots.LONGITUDE, 'rs')
 
         plt.xlabel('latitude')
         plt.ylabel('longitude')

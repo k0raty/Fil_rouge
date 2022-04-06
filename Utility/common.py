@@ -1,8 +1,6 @@
 """ Import librairies """
 from math import pi, cos, sqrt, asin
-
 import numpy
-import numpy as np
 
 """
 Compute the distance in km between 2 coordinates around the earth
@@ -86,7 +84,7 @@ site i and j
 
 def compute_cost_matrix(customers: list, depot) -> numpy.ndarray:
     nbr_of_customer = len(customers)
-    cost_matrix = np.zeros((nbr_of_customer + 1, nbr_of_customer + 1))
+    cost_matrix = numpy.zeros((nbr_of_customer + 1, nbr_of_customer + 1))
 
     for index_i in range(nbr_of_customer):
         customer_i = customers[index_i]
