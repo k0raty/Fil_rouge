@@ -17,28 +17,38 @@ class Tabou:
     VEHICLE_CAPACITY = 5000
 
     fitness: float = 0
-    solution: list = None
+    solution: list = []
     tabou_list: list = []
 
-    def __init__(self, customers=None, depots=None, vehicles=None, cost_matrix=None):
+    """
+    Initialize the genetic algorithm with proper parameters and problem's data
+
+    Parameters
+    ----------
+    customers: list - the list of customers to be served
+    vehicles: list - the list of vehicles that can be used to deliver
+    depot: Utility.depot - the unique depot of the delivering company
+    cost_matrix: numpy.ndarray - the cost of the travel from one summit to another
+    ----------
+    """
+
+    def __init__(self, customers=None, depot=None, vehicles=None, cost_matrix=None):
         if customers is None:
             database = Database()
 
             customers = database.Customers
             vehicles = database.Vehicles
-            depots = database.Depots
-            cost_matrix = compute_cost_matrix(customers, depots[0])
-
-        nbr_of_customers = len(customers)
+            depot = database.Depots[0]
+            cost_matrix = compute_cost_matrix(customers, depot)
 
         self.COST_MATRIX = cost_matrix
-        self.NBR_OF_VEHICLES = len(vehicles)
-        self.NBR_OF_CUSTOMERS = nbr_of_customers
-        self.PROBA_MUTATION = 1 / nbr_of_customers
 
         self.Customers = customers
-        self.Depot = depots[0]
-        self.Vehicles = vehicles[0]
+        self.Depot = depot
+        self.Vehicles = vehicles
+
+        self.NBR_OF_CUSTOMER = len(customers)
+        self.NBR_OF_VEHICLE = len(vehicles)
 
     """
     Apply the tabou algorithm to improve an initial solution over a maximum number of iterations 
@@ -85,13 +95,13 @@ class Tabou:
 
     def find_best_neighbor(self, initial_solution: list):
         solution = initial_solution
-        fitness = compute_fitness(initial_solution, self.COST_MATRIX)
+        fitness = compute_fitness(initial_solution, self.COST_MATRIX, self.Vehicles)
 
         for iteration in range(self.MAX_NEIGHBORS):
             neighbor, inversion_couple = self.find_neighbor(initial_solution)
-            neighbor_fitness = compute_fitness(neighbor, self.COST_MATRIX)
+            neighbor_fitness = compute_fitness(neighbor, self.COST_MATRIX, self.Vehicles)
 
-            is_fitness_better = neighbor_fitness >= fitness
+            is_fitness_better = neighbor_fitness < fitness
             is_solution_valid = self.is_solution_valid(neighbor)
             is_couple_new = inversion_couple not in self.tabou_list
 
@@ -117,7 +127,7 @@ class Tabou:
     """
 
     @staticmethod
-    def find_neighbor(solution):
+    def find_neighbor(solution: list):
         neighbor = deepcopy(solution)
 
         nbr_of_delivery = len(solution)
@@ -239,7 +249,7 @@ class Tabou:
 
         current_time = 481
 
-        for index_customer in range(self.NBR_OF_CUSTOMERS):
+        for index_customer in range(self.NBR_OF_CUSTOMER):
             customer = self.Customers[index_customer]
 
             if customer.INDEX in delivered_customers:
@@ -294,7 +304,7 @@ class Tabou:
         solution = []
         delivered_customers = []
 
-        while len(delivered_customers) < self.NBR_OF_CUSTOMERS:
+        while len(delivered_customers) < self.NBR_OF_CUSTOMER:
             delivered_customers, delivery = self.generate_delivery(delivered_customers)
 
             solution.append(delivery)

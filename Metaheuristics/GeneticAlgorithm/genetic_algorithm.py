@@ -1,11 +1,11 @@
 """ Import librairies """
 import random as rd
-from math import floor
 from numpy import mean, argmin
 from seaborn import color_palette
 import matplotlib.pyplot as plt
 import matplotlib.lines as lines
-import time
+# import time
+# from math import floor
 
 """ Import utilities """
 from Utility.database import Database
@@ -22,36 +22,53 @@ class GeneticAlgorithm:
     MAX_ITERATION: int = 20
 
     fitness: float = 0
-    solution: list = None
+    solution: list = []
 
-    def __init__(self, customers=None, depots=None, vehicles=None, cost_matrix=None):
+    """
+    Initialize the genetic algorithm with proper parameters and problem's data
+    
+    Parameters
+    ----------
+    customers: list - the list of customers to be served
+    vehicles: list - the list of vehicles that can be used to deliver
+    depot: Utility.depot - the unique depot of the delivering company
+    cost_matrix: numpy.ndarray - the cost of the travel from one summit to another
+    ----------
+    """
+
+    def __init__(self, customers=None, depot=None, vehicles=None, cost_matrix=None):
         if customers is None:
             database = Database()
 
             customers = database.Customers
             vehicles = database.Vehicles
-            depots = database.Depots
-            cost_matrix = compute_cost_matrix(customers, depots[0])
-
-        nbr_of_summits = len(customers)
+            depot = database.Depots[0]
+            cost_matrix = compute_cost_matrix(customers, depot)
 
         self.COST_MATRIX = cost_matrix
-        self.NBR_OF_VEHICLES = len(vehicles)
-        self.NBR_OF_SITES = nbr_of_summits
-        self.PROBA_MUTATION = 1 / nbr_of_summits
 
         self.Customers = customers
-        self.Depots = depots[0]
-        self.Vehicles = vehicles[0]
+        self.Depot = depot
+        self.Vehicles = vehicles
+
+        self.NBR_OF_CUSTOMER = len(customers)
+        self.NBR_OF_VEHICLE = len(vehicles)
+
+        self.PROBA_MUTATION = 1 / self.NBR_OF_CUSTOMER
 
     """
     Run the GeneticAlgorithm
+    
+    Parameters
+    ----------
+    initial_solution: list - a solution already given by an algorithm
+    ----------
     """
+
     def main(self, initial_solution=None):
-        plt.close('all')
-        timestamp = floor(time.time())
-        path = os.path.join('Metaheuristics', 'GeneticAlgorithm', 'Graphs', 'test_{}'.format(timestamp))
-        os.mkdir(path)
+        # timestamp = floor(time.time())
+        # path = os.path.join('Metaheuristics', 'GeneticAlgorithm', 'Graphs', 'test_{}'.format(timestamp))
+        # os.mkdir(path)
 
         iteration = 0
         population = self.generate_population(initial_solution)
@@ -100,19 +117,17 @@ class GeneticAlgorithm:
             fitness_list = []
 
             for individual in population:
-                fitness_list.append(compute_fitness(self.adapt_solution_format(individual), self.COST_MATRIX))
+                fitness_list.append(compute_fitness(individual, self.COST_MATRIX, self.Vehicles))
 
             fitness_mean = mean(fitness_list)
             fitness_history.append(fitness_mean)
 
             index_min = argmin(fitness_list)
-            solution = population[index_min]
+            self.solution = population[index_min]
 
             print('Iteration {}, fitness {}'.format(iteration, fitness_list[index_min]))
 
-            self.solution = self.adapt_solution_format(solution)
-
-        self.fitness = compute_fitness(self.solution, self.COST_MATRIX)
+        self.fitness = compute_fitness(self.solution, self.COST_MATRIX, self.Vehicles)
         # self.draw_fitness(iteration, fitness_history, path)
 
     """
@@ -135,7 +150,7 @@ class GeneticAlgorithm:
 
         while len(population_survivors) != self.POPULATION_SIZE:
             contestants = rd.choices(population, k=self.TOURNAMENT_SIZE)
-            contestants = sorted(contestants, key=lambda x: compute_fitness(self.adapt_solution_format(x), self.COST_MATRIX))
+            contestants = sorted(contestants, key=lambda x: compute_fitness(x, self.COST_MATRIX, self.Vehicles))
             winner = contestants[0]
             population_survivors.append(winner)
 
@@ -152,9 +167,10 @@ class GeneticAlgorithm:
     :return population_survivors: list - selected population
     """
     def determinist_selection(self, population: list) -> list:
-        population_survivors = sorted(population, key=lambda x: compute_fitness(self.adapt_solution_format(x), self.COST_MATRIX))
+        population_survivors = sorted(population, key=lambda x: compute_fitness(x, self.COST_MATRIX, self.Vehicles))
         population_survivors = population_survivors[:self.POPULATION_SIZE - self.TOURNAMENT_SIZE]
         population_survivors = rd.choices(population_survivors, k=self.POPULATION_SIZE)
+
         return population_survivors
 
     """
@@ -202,9 +218,17 @@ class GeneticAlgorithm:
     """
     Apply a mutation to a configuration by inverting 2 summits
 
-    :param individual: list - list of all the visummitd summits from the first to the last visummitd
+    Parameters
+    ----------
+    individual: list - list of all the visited summits from the first to the last visited summits
+    ----------
+    
+    Returns
+    -------
     :return : list - new configuration with the mutation
+    -------
     """
+
     def mutate(self, individual: list) -> list:
         """ first we remove all previous depots """
         filtered = [summit for summit in individual if classe(summit) != 'Depot']
@@ -224,39 +248,86 @@ class GeneticAlgorithm:
     """
     Generate the initial population of a certain size, with randomly arranged individuals
 
+    Parameters
+    ----------
     :param size: int - the number of individuals in the population
     :param solution: list - an initial solution to the problem
     :param proportion: float - the proportion of the given solution in the population
-    :return population: list - the population
+    ----------
+    
+    Returns
+    -------
+    population: list - a population containing several solution to the problem
+    -------
     """
-    def generate_population(self, solution=None, proportion=0) -> list:
+
+    def generate_population_old(self, initial_solution=None, proportion=0) -> list:
         population = []
         population_size = self.POPULATION_SIZE
-        seed = range(self.NBR_OF_SITES)
 
-        if solution is not None:
-            initial_solution = []
-
-            for delivery in solution:
-                initial_solution.append(*[customer for customer in delivery if not 0])
-
+        if initial_solution is not None:
             nbr_of_solution = int(proportion * population_size)
 
-            for index in range(nbr_of_solution):
-                population.append(initial_solution)
+            population = [initial_solution for i in range(nbr_of_solution)]
 
             population_size -= nbr_of_solution
 
         for index_individual in range(population_size):
-            """ first we generate random roads between customers """
-            order = rd.sample(seed, k=self.NBR_OF_SITES)
-            individual = [self.Customers[i] for i in order]
-
-            """ then we add a depot when needed"""
-            individual = self.add_depot(individual)
+            individual = self.generate_solution()
             population.append(individual)
 
         return population
+
+    def generate_solution(self):
+        seed = range(1, self.NBR_OF_CUSTOMER + 1)  # as depot's index is 0
+
+        order = rd.sample(seed, k=self.NBR_OF_CUSTOMER)
+        solution = []
+
+        nbr_of_customer_by_vehicle = self.NBR_OF_CUSTOMER // self.NBR_OF_VEHICLE
+        leftover = self.NBR_OF_CUSTOMER % self.NBR_OF_VEHICLE
+
+        for index_vehicle in range(self.NBR_OF_VEHICLE):
+            vehicle = self.Vehicles[index_vehicle]
+            weight = 0
+            delivery = []
+
+            start = index_vehicle * nbr_of_customer_by_vehicle
+            end = start + nbr_of_customer_by_vehicle
+
+            for index_order in range(start, end):
+                index_customer = order[index_order] - 1
+                customer = self.Customers[index_customer]
+
+                weight += customer.TOTAL_WEIGHT_KG
+
+                if weight > vehicle.VEHICLE_TOTAL_WEIGHT_KG:
+                    weight = customer.TOTAL_WEIGHT_KG
+                    delivery.append(0)
+
+                delivery.append(order[index_order])
+
+            solution.append([0, *delivery, 0])
+
+        if leftover > 0:
+            start = self.NBR_OF_VEHICLE * nbr_of_customer_by_vehicle
+            end = self.NBR_OF_CUSTOMER
+            weight = 0
+            vehicle = self.Vehicles[0]
+
+            for index_order in range(start, end):
+                index_customer = order[index_order] - 1
+                customer = self.Customers[index_customer]
+
+                weight += customer.TOTAL_WEIGHT_KG
+
+                if weight > vehicle.VEHICLE_TOTAL_WEIGHT_KG:
+                    weight = customer.TOTAL_WEIGHT_KG
+                    solution[0].append(0)
+
+                solution[0].append(order[index_order])
+
+        return solution
 
     """
     Go through the list of summits and add a return to depot everytime it is needed
@@ -372,6 +443,7 @@ class GeneticAlgorithm:
     :param iteration: int - the number of the iteration in the algorithm shown
     :param history: list - the list of the fitness values for each previous iteration
     """
+
     @staticmethod
     def draw_fitness(iteration, history, filepath):
         plt.figure()
@@ -382,41 +454,20 @@ class GeneticAlgorithm:
         fig.savefig(filepath, format='png')
 
     """
-    :param individual: list - a solution
-    """
-    @staticmethod
-    def nbr_of_vehicles(individual: list) -> int:
-        return len(individual)
-
-    """
     Check that the fitness value is still changing, if no then the return will stop the algorithm in the main function
     
-    :param history: list - the list of all the previous fitness values
+    Parameters
+    ----------
+    history: list - the list of all the previous fitness values
+    ----------
     """
+
     @staticmethod
     def fitness_change(history):
         if len(history) < 5:
             return True
+
         if history[-1] == history[-2] and history[-1] == history[-3]:
             return False
+
         return True
-
-    """
-    :param solution: list - solution with the genetic algorithm format
-    :return formatted_solution: list - solution with a format readable by other algorithms
-    """
-    @staticmethod
-    def adapt_solution_format(solution):
-        formatted_solution = [[]]
-        delivery_index = 0
-
-        for summit in solution:
-            if summit.INDEX == 0:
-                formatted_solution[delivery_index].append(summit.INDEX)
-                formatted_solution.append([summit.INDEX])
-                delivery_index += 1
-
-            else:
-                formatted_solution[delivery_index].append(summit.INDEX)
-
-        return formatted_solution

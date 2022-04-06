@@ -12,8 +12,8 @@ class Vehicle:
     def __init__(self, row):
         self.VEHICLE_NUMBER = row[0]
         self.VEHICLE_CODE = row[1]
-        self.VEHICLE_TOTAL_WEIGHT_KG = row[2]
-        self.VEHICLE_TOTAL_VOLUME_M3 = row[3]
-        self.VEHICLE_VARIABLE_COST_KM = row[4]
-        self.VEHICLE_AVAILABLE_TIME_FROM_MIN = row[5]
-        self.VEHICLE_AVAILABLE_TIME_TO_MIN = row[6]
+        self.VEHICLE_TOTAL_WEIGHT_KG = float(row[2])
+        self.VEHICLE_TOTAL_VOLUME_M3 = float(row[3])
+        self.VEHICLE_VARIABLE_COST_KM = float(row[4])
+        self.VEHICLE_AVAILABLE_TIME_FROM_MIN = float(row[5])
+        self.VEHICLE_AVAILABLE_TIME_TO_MIN = float(row[6])

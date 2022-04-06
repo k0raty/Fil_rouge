@@ -48,22 +48,30 @@ fitness_score:float - value of the cost of this configuration
 """
 
 
-def compute_fitness(solution: list, cost_matrix: numpy.ndarray, nbr_of_vehicle: int = 8) -> float:
-    travel_cost = 0
+def compute_fitness(solution: list, cost_matrix: numpy.ndarray, vehicles: list) -> float:
+    penalty = 5
+    nbr_of_vehicle = len(solution)
 
-    for delivery in solution:
+    solution_cost = nbr_of_vehicle * penalty
+
+    for index_vehicle in range(nbr_of_vehicle):
+        vehicle = vehicles[index_vehicle]
+        cost_by_distance = vehicle.VEHICLE_VARIABLE_COST_KM
+
+        delivery_distance = 0
+
+        delivery = solution[index_vehicle]
         nbr_of_summit = len(delivery)
 
         for index_summit in range(nbr_of_summit - 1):
             summit_from = delivery[index_summit]
             summit_to = delivery[index_summit + 1]
 
-            travel_cost += cost_matrix[summit_from][summit_to]
+            delivery_distance += cost_matrix[summit_from][summit_to]
 
-    penalty = 5
-    vehicle_cost = penalty * nbr_of_vehicle
+        solution_cost += delivery_distance * cost_by_distance
 
-    return travel_cost + vehicle_cost
+    return solution_cost
 
 
 """
