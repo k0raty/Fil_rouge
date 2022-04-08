@@ -463,32 +463,7 @@ def check_forme(x,G):
         assert((x[i][0],x[i][-1])==(0,0)),"Ne départ pas ou ne revient pas au dépot"
         assert(0 not in x[i][1:-1]),"Un camion repasse par 0"
     
-    """
-    Main function , réalise le recuit. 
-
-    Parameters
-    ----------
-    df_customers : tableur excel renseignant sur les clients
-    df_vehicles : tableur excel renseignant sur les camions à disposition 
-    v : Vitesse des véhicules
-    T : Température de départ lors de la phase de recuit.
-
-    Returns
-    -------
-    x : Solution proposée 
-
-    """
-    G=create_G(df_customers,df_vehicles,v) #En rouge le dépot. 
-    n=len(df_vehicles)
-    print("Initialisation de la solution \n")
-    x=init(G,n) 
-    plotting(x,G)
-    print("Solution initialisée , début de la phase de recuit \n")
-    x=recuit_simulé(x,G,T)
-    print("Début de la phase de perfectionnement de la solution \n")
-    x=perturbation_intra(x,G)
-    return x
-
+   
 def fill_data(x,G,df):
     """
     Remplis des informations le tableur excel de sortie
