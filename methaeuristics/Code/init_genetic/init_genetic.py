@@ -247,6 +247,6 @@ def init_gen(G,n_sol,ordre_x,n_car=9):
 
 G=create_G(df_customers,df_vehicles,v)
 
-n_sol=10
+n_sol=50
 X_INIT=init_gen(G,n_sol,ordre_x)
         
