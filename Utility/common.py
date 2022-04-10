@@ -1,7 +1,15 @@
 """ Import librairies """
 import os
 from math import pi, cos, sqrt, asin
-import numpy
+import numpy as np
+import utm
+import networkx as nx
+import pandas as pd
+
+v=50 #Vitesse des véhicules
+df_customers= pd.read_excel("table_2_customers_features.xls")
+df_vehicles=pd.read_excel("table_3_cars_features.xls")
+
 
 """
 Compute the distance in km between 2 coordinates around the earth
@@ -143,3 +151,56 @@ Shortcut to get the class of an object
 
 def classe(instance):
     return type(instance).__name__
+
+
+def create_G(df_customers, df_vehicles, v):
+    """
+    Parameters
+    ----------
+    df_customers : Dataframe contenant les informations sur les clients
+    df_vehicles : Dataframe contenant les informations sur les camions livreurs
+    Returns
+    -------
+    G : Graph plein généré
+    """
+    n_max = len(df_vehicles)  # Le nombre maximum de voitures qu'on mettrai à disposition.
+    n_sommet = len(df_customers)
+    G = nx.empty_graph(n_sommet)
+    (x_0, y_0) = utm.from_latlon(43.37391833, 17.60171712)[:2]
+    dict_0 = {'CUSTOMER_CODE': 0, 'CUSTOMER_LATITUDE': 43.37391833, 'CUSTOMER_LONGITUDE': 17.60171712,
+              'CUSTOMER_TIME_WINDOW_FROM_MIN': 360, 'CUSTOMER_TIME_WINDOW_TO_MIN': 1080, 'TOTAL_WEIGHT_KG': 0,
+              'pos': (x_0, y_0), "CUSTOMER_DELIVERY_SERVICE_TIME_MIN": 0}
+    G.nodes[0].update(dict_0)
+    G.nodes[0]['n_max'] = n_max  # Nombre de voiture maximal
+    dict_vehicles = df_vehicles.to_dict()
+    G.nodes[0]['Camion'] = dict_vehicles
+    for i in range(1, len(G.nodes)):
+        dict = df_customers.iloc[i].to_dict()
+        dict['pos'] = utm.from_latlon(dict['CUSTOMER_LATITUDE'], dict['CUSTOMER_LONGITUDE'])[:2]
+        G.nodes[i].update(dict)
+
+        ###On rajoute les routes###
+    for i in range(0, len(G.nodes)):
+        for j in range(0, len(G.nodes)):
+            if i != j:
+                z_1 = G.nodes[i]['pos']
+                z_2 = G.nodes[j]['pos']
+                G.add_edge(i, j, weight=get_distance(z_1, z_2))
+                G[i][j]['time'] = (G[i][j]['weight'] / v) * 60
+
+    G.nodes[0]['n_max'] = n_max  # Nombre de voiture maximal
+    p = [2, -100, n_sommet]  # Equation pour trouver n_min
+    roots = np.roots(p)
+    n_min = max(1,
+                int(roots.min()) + 1)  # Nombre de voiture minimal possible , solution d'une équation de second degrès.
+    G.nodes[0]['n_min'] = n_min
+
+    return G
+
+def get_distance(z_1,z_2):
+    """
+    Distance entre deux points sur plan z_1 et z_2
+    """
+    x_1,x_2,y_1,y_2=z_1[0],z_2[0],z_1[1],z_2[1]
+    d=math.sqrt((x_1-x_2)**2+(y_1-y_2)**2)
+    return d/1000 #en km

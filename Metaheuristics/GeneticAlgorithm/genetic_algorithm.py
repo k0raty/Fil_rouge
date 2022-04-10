@@ -48,9 +48,9 @@ class GeneticAlgorithm:
 
         self.COST_MATRIX = cost_matrix
 
-        self.Customers = customers
-        self.Depot = depot
-        self.Vehicles = vehicles
+        self.Customers = customers  # correspond à graph.node[index_customer]
+        self.Depot = depot # correspond à graph.node[0]
+        self.Vehicles = vehicles  # ne plus utiliser ça, et appliquer l'indice véhicule au noeud 0 du graphe graph.node[0]['Camion']
 
         self.NBR_OF_CUSTOMER = len(customers)
         self.NBR_OF_VEHICLE = len(vehicles)
@@ -305,7 +305,8 @@ class GeneticAlgorithm:
     solution: list - a randomly generated solution to the problem
     -------
     """
-
+    # utiliser une fonction qui génère la solution du problème de voyageur de commerce
+    # puis la segmenter par véhicule, en changeant la méthode de segmentation
     def generate_solution(self, order=None):
         if order is None:
             seed = range(1, self.NBR_OF_CUSTOMER + 1)  # as depot's index is 0

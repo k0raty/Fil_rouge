@@ -43,7 +43,7 @@ def check_temps(x, G):
     return True
 
 
-def check_temps_2(x, G):
+def check_temps_part(x, G):
     """
     Fonction de vérification de contrainte conçernant les intervalles de temps.
         -On considère une itération de temps à chaque trajet , peu importe sa longueur.
@@ -119,3 +119,29 @@ def check_constraint(x, G):
             return True
     else:
         return False
+
+def check_forme(x,G):
+    """
+    Vérifie que la forme de la solution est correcte
+    Parameters
+    ----------
+    x : solution
+    G : Graphe du problème
+    Returns
+    -------
+    Assertions.
+    """
+    visite=pd.DataFrame(columns=["Client" , "passage"])
+    for l in x:
+        for m in l:
+            if m not in list(visite["Client"]):
+                dict={"Client":m,"passage":1}
+                visite=visite.append([dict])
+            else:
+                visite['passage'][visite['Client']==m]+=1
+    assert(len(visite)==len(G.nodes)),"Tout les sommets ne sont pas pris en compte" #On vérifie que tout les sommets sont pris en compte
+    visite_2=visite[visite['Client']!=0]
+    assert(len(visite_2[visite_2['passage']>1])==0),"Certains sommets sont plusieurs fois déservis"
+    for i in range(0,len(x)):
+        assert((x[i][0],x[i][-1])==(0,0)),"Ne départ pas ou ne revient pas au dépot"
+        assert(0 not in x[i][1:-1]),"Un camion repasse par 0"
