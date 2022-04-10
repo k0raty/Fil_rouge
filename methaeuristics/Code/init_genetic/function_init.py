@@ -463,7 +463,11 @@ def check_forme(x,G):
         assert((x[i][0],x[i][-1])==(0,0)),"Ne départ pas ou ne revient pas au dépot"
         assert(0 not in x[i][1:-1]),"Un camion repasse par 0"
     
+<<<<<<< HEAD
 
+=======
+   
+>>>>>>> 89195a1a9bac7a5492e0bbaf1e0146bec049f5ef
 def fill_data(x,G,df):
     """
     Remplis des informations le tableur excel de sortie
