@@ -33,10 +33,11 @@ import matplotlib.pyplot as plt
 import warnings
 import utm
 
+os.chdir(r'C:\Users\anton\Documents\ICO\Fil_rouge\alexandre')
+
 """ Import utilities """
 from Utility.database import Database
 from Utility.common import *
-os.chdir(r'C:\Users\anton\Documents\ICO\Fil_rouge\alexandre')
 
 from Metaheuristics.SimulatedAnnealing.simulated_annealing_initialization import main
 
@@ -69,7 +70,7 @@ class Annealing:
         self.T=INITIAL_TEMPERATURE
         self.speed=VEHICLE_SPEED
 
-    def main(self, initial_solution=None):
+    def main(self, initial_solution=None,speedy=True):
         
         """
         Main function , réalise le recuit. 
@@ -80,6 +81,7 @@ class Annealing:
         df_vehicles : tableur excel renseignant sur les camions à disposition 
         v : Vitesse des véhicules
         T : Température de départ lors de la phase de recuit.
+        speedy: Si c'est en phase rapide ou non (très peu d'itérations)
         ----------
         
         Returns
@@ -89,17 +91,22 @@ class Annealing:
         """
         initial_solution=list(pd.read_pickle(r"C:\Users\anton\Documents\ICO\Fil_rouge\alexandre\Metaheuristics\SimulatedAnnealing\df_ordre_init.pkl")['Ordre'])
         graph = self.graph
+        self.speedy=speedy
         print("Initialisation de la solution \n")
         if initial_solution==None :
             solution = self.init(graph)
         else: solution=initial_solution
         plotting(solution, graph)
         print("Solution initialisée , début de la phase de recuit \n")
-
-        solution = self.recuit_simulé(solution,graph,self.T)
+        
+        solution = self.recuit_simulé(solution,graph,self.T,self.speedy)
+        self.fitness= energie(solution,graph)
+        print("Pour l'instant l'énergie est de :%d" %self.fitness)
         print("Début de la phase de perfectionnement de la solution \n")
 
-        solution = self.perturbation_intra(solution, graph)
+        solution = self.perturbation_intra(solution,graph,speedy)
+        self.fitness= energie(solution,graph)
+        print("Finalement l'énergie est de :%d" %self.fitness)
 
         return solution
 
@@ -220,7 +227,7 @@ class Annealing:
         return solution
 
     # A ADAPTER DANS LA CLASSE
-    def temperature(E, E0):
+    def temperature(self,E, E0):
         """
         Fonction température
         """
@@ -228,7 +235,7 @@ class Annealing:
 
     # A ADAPTER DANS LA CLASSE MAIS JE PENSE QU'IL EST DANS validator
    
-    def recuit_simulé(self,x, G, T):
+    def recuit_simulé(self,x, G, T,speedy):
 
         """
         Fonction de recuit qui mélanges les clients de chaque camion mais qui ne modifie pas l'initial_order de deservissement pour un camion en question. 
@@ -242,6 +249,7 @@ class Annealing:
         ----------
         x : Solution à perturber
         G : Graph du problème 
+        speedy : Si oui ou non on effectue une unique itération
         
         Returns
         -------
@@ -350,7 +358,9 @@ class Annealing:
             num_x = sum([len(i) for i in x])  # On vérifie qu'aucun sommet n'a été oublié
             assert (num_very_old_x == num_x)
             E = energie(best_x, G)
-
+            if speedy==True :
+                print("Mode speed_run \n")
+                return best_x
             ###Modification de la température###
             if E0 > E:
                 self.T = self.temperature(E, E0)
@@ -373,8 +383,58 @@ class Annealing:
         plotting(x, G)
 
         return best_x
+        
+    def perturbation_intra(self,x,G,speedy):
+        """
+        Deuxième phase de perturbation , on n'échange plus des clients entre chaque trajectoire de camion  mais 
+        seulement l'ordre des client pour chaque route
 
+        Parameters
+        ----------
+        x : solution après la première phase
+        G : Graphe du problème
+
+        Returns
+        -------
+        x : solution finale.
+
+        """
+        d  = energie(x,G)
+        d0 = d+1
+        it = 1
+        list_E=[d]
+        while d < d0 :
+            it += 1
+            print("iteration",it, "d=",d)
+            d0 = d
+            for camion in tqdm(range(0,len(x))):
+                route=x[camion]
+                for i in range(1,len(route)-1) :
+                    for j in range(i+2,len(route)):
+                        d_part=energie_part(route,G,camion)
+                        r = route[i:j].copy()
+                        r.reverse()
+                        route2 = route[:i] + r + route[j:]
+                        t = energie_part(route2,G,camion)
+                        if (t < d_part): 
+                            if check_temps_part(route2,G)==True: 
+                                x[camion] = route2   
+            d=energie(x,G)
+            list_E.append(d)
+            assert(check_temps(x,G)==True)  
+            plotting(x,G)
+            if speedy == True :
+                break
+        plt.clf()
+        plt.plot(list_E,'o-')
+        plt.title("Evoluation de l'énergie lors de la seconde phase")
+        plt.show()
+        
+        ###Assertions de fin###
+        
+        check_forme(x,G)
+        assert(check_constraint(x,G)==True),"Mauvaise initialisation au niveau du temps"
+        return x
     # A ADAPTER DANS LA CLASSE
    
-
-
+   

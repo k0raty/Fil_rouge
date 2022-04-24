@@ -1,3 +1,6 @@
+import os
+os.chdir(r'C:\Users\anton\Documents\ICO\Fil_rouge\alexandre')
+
 """ Import librairies """
 from mesa import Agent, Model
 from mesa.time import RandomActivation  # agents activated in random order at each step
@@ -14,7 +17,7 @@ from Utility.common import compute_cost_matrix, set_root_dir
 """ Import metaheuristics """
 from Metaheuristics.GeneticAlgorithm.genetic_algorithm import GeneticAlgorithm
 from Metaheuristics.Tabou.tabou import Tabou
-# from Metaheuristics.SimulatedAnnealing.simulated_annealing import Annealing
+from Metaheuristics.SimulatedAnnealing.recuit_classe import Annealing
 
 set_root_dir()
 
@@ -28,12 +31,14 @@ class AgentMeta(Agent):
     solution = []
     initial_solution = None
 
-    def __init__(self, unique_id, model, meta):
+    def __init__(self, unique_id, model, meta,speedy):
         super().__init__(unique_id, model)
         self.meta = meta
+        self.speedy=speedy
 
     def step(self):
-        self.meta.main(self.initial_solution)
+   
+        self.meta.main(self.initial_solution,self.speedy)
 
         self.solution = self.meta.solution
         self.fitness = self.meta.fitness
@@ -71,14 +76,13 @@ def compute_gini(model) -> float:
 
 
 class ModelSma(Model):
-    def __init__(self, nbr_of_genetic=1, nbr_of_tabou=1, nbr_of_recuit=0):
-        self.Database = Database()
-
+    def __init__(self, nbr_of_genetic=0, nbr_of_tabou=0, nbr_of_recuit=1,speed=40,speedy=True):
+        self.Database = Database(speed)
         customers = self.Database.Customers
         depots = self.Database.Depots
         vehicles = self.Database.Vehicles
-
-        cost_matrix = compute_cost_matrix(customers, depots[0])
+        graph=self.Database.graph
+        cost_matrix = compute_cost_matrix(graph)
 
         self.Pool = Pool(cost_matrix, vehicles)
 
@@ -91,20 +95,20 @@ class ModelSma(Model):
 
         for index_agent in range(nbr_of_genetic):
             unique_id = 'genetic_{}'.format(index_agent)
-            agent = AgentMeta(unique_id, self, GeneticAlgorithm(customers, depots, vehicles, cost_matrix))
+            agent = AgentMeta(unique_id, self, GeneticAlgorithm(customers, depots, vehicles, cost_matrix),speedy)
             self.schedule.add(agent)
 
         for index_agent in range(nbr_of_tabou):
             unique_id = 'tabou_{}'.format(index_agent)
-            agent = AgentMeta(unique_id, self, Tabou(customers, depots, vehicles, cost_matrix))
+            agent = AgentMeta(unique_id, self, Tabou(customers, depots, vehicles, cost_matrix),speedy)
             self.schedule.add(agent)
 
-        """
+        
         for index_agent in range(nbr_of_recuit):
             unique_id = 'recuit_{}'.format(index_agent)
-            agent = AgentMeta(unique_id, self, Annealing(customers, depots, vehicles, cost_matrix))
+            agent = AgentMeta(unique_id, self, Annealing(),speedy)
             self.schedule.add(agent)
-        """
+        
 
     def step(self, solution_list=None):     #solution est une liste de solutions
         """Advance the model by one step."""
@@ -121,7 +125,7 @@ class ModelSma(Model):
             for index_agent in range(self.nbr_of_agent):
                 self.schedule.agents[index_agent].initial_solution = solution_list[0]
 
-        self.schedule.step()
+        self.schedule.step() #speedy define wheather you want a quick sol or not
         self.datacollector.collect(self)
 
         solutions = self.datacollector.get_agent_vars_dataframe()
@@ -148,8 +152,8 @@ class Scenario:
     ----------
     """
 
-    def no_interaction(self, nbr_of_iteration=2):
-        model_sma = ModelSma(nbr_of_genetic=1, nbr_of_tabou=1)
+    def no_interaction(self, nbr_of_iteration=2,speedy=True): #
+        model_sma = ModelSma(nbr_of_genetic=0, nbr_of_tabou=0,nbr_of_recuit=1,speedy=True)
 
         for iteration in range(nbr_of_iteration):
             model_sma.step()

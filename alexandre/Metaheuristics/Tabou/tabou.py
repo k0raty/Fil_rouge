@@ -65,7 +65,7 @@ class Tabou:
     -------
     """
 
-    def main(self, initial_solution=None):
+    def main(self, initial_solution=None,speedy=True):
         if initial_solution is None:
             initial_solution = self.initialisation()
 

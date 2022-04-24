@@ -5,14 +5,19 @@ from seaborn import color_palette
 import matplotlib.pyplot as plt
 import matplotlib.lines as lines
 from copy import deepcopy
+import os
+import pandas as pd
 # import time
 # from math import floor
+
+os.chdir(r'C:\Users\anton\Documents\ICO\Fil_rouge\alexandre')
 
 """ Import utilities """
 from Utility.database import Database
 from Utility.common import *
 
-set_root_dir()
+
+#set_root_dir()
 
 
 class GeneticAlgorithm:
@@ -37,17 +42,18 @@ class GeneticAlgorithm:
     ----------
     """
 
-    def __init__(self, customers=None, depot=None, vehicles=None, cost_matrix=None):
+    def __init__(self,customers=None, depot=None, vehicles=None, cost_matrix=None,VEHICLE_SPEED=40):
         if customers is None:
-            database = Database()
-
+            database = Database(VEHICLE_SPEED)
             customers = database.Customers
             vehicles = database.Vehicles
+            graph=database.graph
             depot = database.Depots[0]
             cost_matrix = compute_cost_matrix(customers, depot)
 
         self.COST_MATRIX = cost_matrix
 
+        self.graph=graph
         self.Customers = customers  # correspond à graph.node[index_customer]
         self.Depot = depot # correspond à graph.node[0]
         self.Vehicles = vehicles  # ne plus utiliser ça, et appliquer l'indice véhicule au noeud 0 du graphe graph.node[0]['Camion']
@@ -66,13 +72,14 @@ class GeneticAlgorithm:
     ----------
     """
 
-    def main(self, initial_solution=None):
+    def main(self, initial_solution=None,speedy=True):
         # timestamp = floor(time.time())
         # path = os.path.join('Metaheuristics', 'GeneticAlgorithm', 'Graphs', 'test_{}'.format(timestamp))
         # os.mkdir(path)
-
+        df=pd.read_pickle(r"C:\Users\anton\Documents\ICO\Fil_rouge\alexandre\Dataset\ordre_50_it.pkl")
         iteration = 0
-        population = self.generate_population(initial_solution)
+        #population = self.generate_population(initial_solution)
+        population = list(df.iloc[0])
         fitness_history = []
 
         while iteration < self.MAX_ITERATION and self.fitness_change(fitness_history):

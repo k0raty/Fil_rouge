@@ -66,8 +66,8 @@ def compute_fitness(solution: list, cost_matrix: np.ndarray, vehicles: list) -> 
     solution_cost = nbr_of_vehicle * penalty
 
     for index_vehicle in range(nbr_of_vehicle):
-        vehicle = vehicles[index_vehicle]
-        cost_by_distance = vehicle.VEHICLE_VARIABLE_COST_KM
+     #   vehicle = vehicles[index_vehicle]
+        cost_by_distance = vehicles['VEHICLE_VARIABLE_COST_KM'][index_vehicle]
 
         delivery_distance = 0
 
@@ -85,15 +85,14 @@ def compute_fitness(solution: list, cost_matrix: np.ndarray, vehicles: list) -> 
     return solution_cost
 
 
-def compute_cost_matrix(customers: list, depot) -> np.ndarray:
+def compute_cost_matrix(G) -> np.ndarray:
         
     """
     Fill a matrix storing the cost of the travel between every customers
     
     Parameters
     ----------
-    customers: list - the list of customers with their coordinates
-    depot: Utility.Depot - the unique depot of the problem
+    G : the Graph
     ----------
     
     Returns
@@ -103,36 +102,11 @@ def compute_cost_matrix(customers: list, depot) -> np.ndarray:
     -------
     """
 
-
-    nbr_of_customer = len(customers)
-    cost_matrix = np.zeros((nbr_of_customer + 1, nbr_of_customer + 1))
-
-    for index_i in range(nbr_of_customer):
-        customer_i = customers[index_i]
-
-        distance_to_depot = compute_distance(
-            depot.LATITUDE,
-            depot.LONGITUDE,
-            customer_i.LATITUDE,
-            customer_i.LONGITUDE,
-        )
-
-        cost_matrix[0, index_i] = distance_to_depot
-        cost_matrix[index_i, 0] = distance_to_depot
-
-        for index_j in range(nbr_of_customer):
-            customer_j = customers[index_j]
-
-            distance_from_i_to_j = compute_distance(
-                customer_i.LATITUDE,
-                customer_i.LONGITUDE,
-                customer_j.LATITUDE,
-                customer_j.LONGITUDE,
-            )
-
-            cost_matrix[index_i + 1, index_j + 1] = distance_from_i_to_j
-            cost_matrix[index_j + 1, index_i + 1] = distance_from_i_to_j
-
+    cost_matrix=np.empty((len(G),len(G)))
+    for i in range(0,len(G)):
+        for j in range(0,len(G)):
+            if i!=j:
+                cost_matrix[i][j]=G[i][j]['weight']#km
     return cost_matrix
 
 
