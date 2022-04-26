@@ -9,9 +9,9 @@ from Utility.common import compute_fitness
 class Pool:
     pool = []
 
-    def __init__(self, cost_matrix, vehicles, pool_max_size=10, pr=10):
+    def __init__(self, cost_matrix, graph, pool_max_size=10, pr=10):
         self.COST_MATRIX = cost_matrix
-        self.Vehicles = vehicles
+        self.Graph = graph
         self.PR = pr
         self.POOL_MAX_SIZE = pool_max_size
 
@@ -102,7 +102,7 @@ class Pool:
         for index_solution in range(pool_occupation):
             solution = self.pool[index_solution]
 
-            fitness = compute_fitness(solution, self.COST_MATRIX, self.Vehicles)
+            fitness = compute_fitness(solution, self.COST_MATRIX, self.Graph)
 
             if fitness > new_fitness:
                 continue
@@ -118,7 +118,7 @@ class Pool:
 
         if index_candidate > -1:
             self.pool[index_candidate] = new_solution
-            self.pool = sorted(self.pool, key=lambda x: compute_fitness(x, self.COST_MATRIX, self.Vehicles))
+            self.pool = sorted(self.pool, key=lambda x: compute_fitness(x, self.COST_MATRIX, self.Graph))
 
     """ Trace le graphe représentant la distance des solutions contenues dans S à la solution L """
 

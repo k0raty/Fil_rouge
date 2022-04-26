@@ -32,19 +32,17 @@ class Tabou:
     ----------
     """
 
-    def __init__(self, vehicles=None, cost_matrix=None, graph=None):
+    def __init__(self, cost_matrix=None, graph=None):
         if graph is None:
             database = Database()
             graph = database.Graph
-            vehicles = database.Vehicles
             cost_matrix = compute_cost_matrix(graph)
 
         self.COST_MATRIX = cost_matrix
         self.Graph = graph
-        self.Vehicles = vehicles
 
         self.NBR_OF_CUSTOMER = len(graph) - 1
-        self.NBR_OF_VEHICLE = len(vehicles)
+        self.NBR_OF_VEHICLE = len(graph.nodes[0]['Vehicles'])
 
     """
     Apply the tabou algorithm to improve an initial solution over a maximum number of iterations 
@@ -91,11 +89,11 @@ class Tabou:
 
     def find_best_neighbor(self, initial_solution: list):
         solution = initial_solution
-        fitness = compute_fitness(initial_solution, self.COST_MATRIX, self.Vehicles)
+        fitness = compute_fitness(initial_solution, self.COST_MATRIX, self.Graph)
 
         for iteration in range(self.MAX_NEIGHBORS):
             neighbor, inversion_couple = self.find_neighbor(initial_solution)
-            neighbor_fitness = compute_fitness(neighbor, self.COST_MATRIX, self.Vehicles)
+            neighbor_fitness = compute_fitness(neighbor, self.COST_MATRIX, self.Graph)
 
             is_fitness_better = neighbor_fitness < fitness
             is_solution_valid = self.is_solution_valid(neighbor)

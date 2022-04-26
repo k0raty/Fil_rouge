@@ -37,19 +37,17 @@ class GeneticAlgorithm:
     ----------
     """
 
-    def __init__(self, vehicles=None, cost_matrix=None, graph=None, vehicle_speed=40):
+    def __init__(self, cost_matrix=None, graph=None, vehicle_speed=40):
         if graph is None:
             database = Database(vehicle_speed)
-            vehicles = database.Vehicles
             graph = database.Graph
             cost_matrix = compute_cost_matrix(graph)
 
         self.COST_MATRIX = cost_matrix
         self.Graph = graph
-        self.Vehicles = vehicles
 
         self.NBR_OF_CUSTOMER = len(graph) - 1  # the depot is not a customer
-        self.NBR_OF_VEHICLE = len(vehicles)
+        self.NBR_OF_VEHICLE = len(graph.nodes[0]['Vehicles'])
 
         self.PROBA_MUTATION = 1 / self.NBR_OF_CUSTOMER
 
@@ -113,7 +111,7 @@ class GeneticAlgorithm:
             fitness_list = []
 
             for individual in population:
-                fitness_list.append(compute_fitness(individual, self.COST_MATRIX, self.Vehicles))
+                fitness_list.append(compute_fitness(individual, self.COST_MATRIX, self.Graph))
 
             fitness_mean = mean(fitness_list)
             fitness_history.append(fitness_mean)
@@ -123,7 +121,7 @@ class GeneticAlgorithm:
 
             print('Iteration {}, fitness {}'.format(iteration, fitness_list[index_min]))
 
-        self.fitness = compute_fitness(self.solution, self.COST_MATRIX, self.Vehicles)
+        self.fitness = compute_fitness(self.solution, self.COST_MATRIX, self.Graph)
         # self.draw_fitness(iteration, fitness_history, path)
 
     """
@@ -146,7 +144,7 @@ class GeneticAlgorithm:
 
         while len(population_survivors) != self.POPULATION_SIZE:
             contestants = rd.choices(population, k=self.TOURNAMENT_SIZE)
-            contestants = sorted(contestants, key=lambda x: compute_fitness(x, self.COST_MATRIX, self.Vehicles))
+            contestants = sorted(contestants, key=lambda x: compute_fitness(x, self.COST_MATRIX, self.Graph))
             winner = contestants[0]
             population_survivors.append(winner)
 
@@ -171,7 +169,7 @@ class GeneticAlgorithm:
     """
 
     def determinist_selection(self, population: list) -> list:
-        population_survivors = sorted(population, key=lambda x: compute_fitness(x, self.COST_MATRIX, self.Vehicles))
+        population_survivors = sorted(population, key=lambda x: compute_fitness(x, self.COST_MATRIX, self.Graph))
         population_survivors = population_survivors[:self.POPULATION_SIZE - self.TOURNAMENT_SIZE]
         population_survivors = rd.choices(population_survivors, k=self.POPULATION_SIZE)
 
@@ -325,7 +323,7 @@ class GeneticAlgorithm:
 
                 weight += customer['TOTAL_WEIGHT_KG']
 
-                if weight > self.Vehicles['VEHICLE_TOTAL_WEIGHT_KG'][index_vehicle]:
+                if weight > self.Graph.nodes[0]['Vehicles']['VEHICLE_TOTAL_WEIGHT_KG'][index_vehicle]:
                     weight = customer['TOTAL_WEIGHT_KG']
                     delivery.append(0)
 
@@ -344,7 +342,7 @@ class GeneticAlgorithm:
 
                 weight += customer['TOTAL_WEIGHT_KG']
 
-                if weight > self.Vehicles['VEHICLE_TOTAL_WEIGHT_KG'][0]:
+                if weight > self.Graph.nodes[0]['Vehicles']['VEHICLE_TOTAL_WEIGHT_KG'][0]:
                     weight = customer['TOTAL_WEIGHT_KG']
                     solution[0].append(0)
 

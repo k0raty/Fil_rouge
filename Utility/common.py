@@ -4,9 +4,11 @@ from math import pi, cos, sqrt, asin
 import numpy as np
 import utm
 import networkx as nx
-import pandas as pd
 import matplotlib.pyplot as plt
 from tqdm import tqdm
+
+""" Import validation fonctions """
+from Utility.validator import *
 
 
 def set_root_dir():
@@ -91,12 +93,13 @@ fitness_score:float - value of the cost of this configuration
 """
 
 
-def compute_fitness(solution: list, cost_matrix: np.ndarray, vehicles: list) -> float:
+def compute_fitness(solution: list, cost_matrix: np.ndarray, graph) -> float:
     nbr_of_vehicle = len(solution)
 
-    solution_cost=0
+    solution_cost = 0
+
     for index_vehicle in range(nbr_of_vehicle):
-        cost_by_distance = vehicles['VEHICLE_VARIABLE_COST_KM'][index_vehicle]
+        cost_by_distance = graph.nodes[0]['Vehicles']['VEHICLE_VARIABLE_COST_KM'][index_vehicle]
 
         delivery_distance = 0
 
@@ -205,7 +208,7 @@ def create_graph(df_customers, df_vehicles, vehicle_speed=50):
 
     dict_vehicles = df_vehicles.to_dict()
 
-    graph.nodes[0]['Camion'] = dict_vehicles
+    graph.nodes[0]['Vehicles'] = dict_vehicles
 
     for index_customer in range(nbr_of_summit):
         customer = df_customers.iloc[index_customer]
@@ -233,46 +236,6 @@ def create_graph(df_customers, df_vehicles, vehicle_speed=50):
     graph.nodes[0]['n_min'] = n_min
 
     return graph
-
-
-# Fonction pour le recuit_simulé
-
-def check_temps(x, G):
-    """
-    Fonction de vérification de contrainte conçernant les intervalles de temps.
-        -Chaque camion part au même moment, cependant leurs temps de trajets sont pris en compte
-        seulement lorsque ceux-ci sont arrivés chez le premier client.
-    Parameters
-    ----------
-    x : Solution à évaluer
-    G : Graphe du problème
-    Returns
-    -------
-    bool
-        Si oui ou non, les intervalles de temps sont bien respectés dans le routage crée.
-        Le camion peut marquer des pauses.
-    """
-    K = len(x)
-    for route in range(0, K):
-        df_temps = pd.DataFrame(columns=['temps', 'route', 'temps_de_parcours', 'limite_inf', 'limite_sup'])
-        temps = G.nodes[0]['CUSTOMER_TIME_WINDOW_FROM_MIN']  # Temps d'ouverture du dépot
-        for i in range(1, len(x[route]) - 1):  # On ne prend pas en compte l'aller dans l'intervalle de temps
-            first_node = x[route][i]
-            second_node = x[route][i + 1]
-            if second_node != 0:
-                temps += G[first_node][second_node]['time']  # temps mis pour parcourir la route en minute
-                while temps < G.nodes[second_node]['CUSTOMER_TIME_WINDOW_FROM_MIN']:
-                    temps += 1  # Le camion est en pause
-                dict = {'temps': temps, 'route': (first_node, second_node),
-                        'temps_de_parcours': G[first_node][second_node]['time'],
-                        'limite_inf': G.nodes[second_node]['CUSTOMER_TIME_WINDOW_FROM_MIN'],
-                        'limite_sup': G.nodes[second_node]['CUSTOMER_TIME_WINDOW_TO_MIN'], "camion": route}
-                df_temps = df_temps.append([dict])
-                if (temps < G.nodes[second_node]['CUSTOMER_TIME_WINDOW_FROM_MIN'] or temps > G.nodes[second_node][
-                    'CUSTOMER_TIME_WINDOW_TO_MIN']):
-                    return False
-                temps += G.nodes[second_node]["CUSTOMER_DELIVERY_SERVICE_TIME_MIN"] / 10
-    return True
 
 
 # A ADAPTER DANS LA CLASSE MAIS JE PENSE QU'IL EST DANS validator
@@ -315,28 +278,6 @@ def check_temps_part(x, G):
 
 
 # A ADAPTER DANS LA CLASSE
-def check_ressource(route, Q, G):
-    """
-    Fonction de vérification de contrainte des ressources.
-    Parameters
-    ----------
-    route : x[route], correspond à la route que va parcourir notre camion.
-    Q : Ressource du camion considéré
-    G : Graph du problème
-    Returns
-    -------
-    bool
-        Si oui ou non, le camion peut en effet desservir toute les villes en fonction de ses ressources.
-    """
-    ressource = Q
-    for nodes in route:
-        ressource = ressource - G.nodes[nodes]['TOTAL_WEIGHT_KG']
-        if ressource < 0:
-            return False
-    return True
-
-
-# A ADAPTER DANS LA CLASSE
 def plotting(x, G):
     """
     Affiche les trajectoires des différents camion entre les clients.
@@ -363,7 +304,7 @@ def plotting(x, G):
         if len(x) > 2:
             xo = [X[o] for o in x[camion]]
             yo = [Y[o] for o in x[camion]]
-            plt.plot(xo, yo, colors[couleur], label=G.nodes[0]["Camion"]["VEHICLE_VARIABLE_COST_KM"][camion])
+            plt.plot(xo, yo, colors[couleur], label=G.nodes[0]['Vehicles']["VEHICLE_VARIABLE_COST_KM"][camion])
             couleur += 1
     plt.legend(loc='upper left')
     plt.show()
@@ -387,7 +328,7 @@ def energie(x, G):
     somme = 0
     for route in range(0, K):
         if len(x[route]) > 2:  # si la route n'est pas vide
-            w = G.nodes[0]['Camion']['VEHICLE_VARIABLE_COST_KM'][
+            w = G.nodes[0]['Vehicles']['VEHICLE_VARIABLE_COST_KM'][
                 route]  # On fonction du coût d'utilisation du camion
             weight_road = sum(
                 [G[x[route][sommet]][x[route][sommet + 1]]['weight'] for sommet in range(0, len(x[route]) - 1)])
@@ -411,32 +352,12 @@ def energie_part(x, G, camion):
 
     """
     if len(x) > 2:  # si la route n'est pas vide
-        w = G.nodes[0]['Camion']['VEHICLE_VARIABLE_COST_KM'][camion]  # On fonction du coût d'utilisation du camion
+        w = G.nodes[0]['Vehicles']['VEHICLE_VARIABLE_COST_KM'][camion]  # On fonction du coût d'utilisation du camion
         somme = sum([G[x[sommet]][x[sommet + 1]]['weight'] for sommet in range(0, len(x) - 1)])
         somme += w * somme  # facteur véhicule
         return somme
     else:
         return 0
-
-
-# A ADAPTER DANS LA CLASSE MAIS JE PENSE QU'IL EST DANS validator
-def check_constraint(x, G):
-    """
-    Vérifie que les contraintes principales sont vérifiée:
-        -Les ressources demandée par chaque client sur un trajet ne sont pas supérieure au
-        disponibilités du camion
-        -Les villes sont livrées en temps et en heure.
-    """
-
-    Q = [G.nodes[0]['Camion']['VEHICLE_TOTAL_WEIGHT_KG'][i] for i in range(0, len(x))]
-    if (check_temps(x, G) == True):
-        for i in range(0, len(x)):
-            if (check_ressource(x[i], Q[i], G) != True):
-                return False
-        else:
-            return True
-    else:
-        return False
 
 
 # A ADAPTER DANS LA CLASSE
@@ -477,7 +398,7 @@ def perturbation_intra(x, G):
                             x[camion] = route2
         d = energie(x, G)
         list_E.append(d)
-        assert (check_temps(x, G) == True)
+        assert (check_time(x, G) == True)
         plotting(x, G)
     plt.clf()
     plt.plot(list_E, 'o-')
@@ -489,36 +410,3 @@ def perturbation_intra(x, G):
     check_forme(x, G)
     assert (check_constraint(x, G) == True), "Mauvaise initialisation au niveau du temps"
     return x
-
-
-# A ADAPTER DANS LA CLASSE MAIS JE PENSE QU'IL EST DANS validator
-def check_forme(x, G):
-    """
-    Vérifie que la forme de la solution est correcte
-
-    Parameters
-    ----------
-    x : solution
-    G : Graphe du problème
-
-    Returns
-    -------
-    Assertions.
-
-    """
-    visite = pd.DataFrame(columns=["Client", "passage"])
-    for l in x:
-        for m in l:
-            if m not in list(visite["Client"]):
-                dict = {"Client": m, "passage": 1}
-                visite = visite.append([dict])
-            else:
-                visite['passage'][visite['Client'] == m] += 1
-    assert (len(visite) == len(
-        G.nodes)), "Tout les sommets ne sont pas pris en compte"  # On vérifie que tout les sommets sont pris en compte
-    visite_2 = visite[visite['Client'] != 0]
-    assert (len(visite_2[visite_2['passage'] > 1]) == 0), "Certains sommets sont plusieurs fois déservis"
-    for i in range(0, len(x)):
-        assert ((x[i][0], x[i][-1]) == (0, 0)), "Ne départ pas ou ne revient pas au dépot"
-        assert (0 not in x[i][1:-1]), "Un camion repasse par 0"
-# A ADAPTER DANS LA CLASSE

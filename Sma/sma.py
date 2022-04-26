@@ -72,11 +72,10 @@ class ModelSma(Model):
     def __init__(self, nbr_of_genetic=0, nbr_of_tabou=0, nbr_of_recuit=0, vehicle_speed=40, speedy=True):
         self.Database = Database(vehicle_speed)
 
-        vehicles = self.Database.Vehicles
         graph = self.Database.Graph
         cost_matrix = compute_cost_matrix(graph)
 
-        self.Pool = Pool(cost_matrix, vehicles)
+        self.Pool = Pool(cost_matrix, graph)
 
         self.schedule = RandomActivation(self)
         self.datacollector = DataCollector(
@@ -87,12 +86,12 @@ class ModelSma(Model):
 
         for index_agent in range(nbr_of_genetic):
             unique_id = 'genetic_{}'.format(index_agent)
-            agent = AgentMeta(unique_id, self, GeneticAlgorithm(vehicles, cost_matrix, graph), speedy)
+            agent = AgentMeta(unique_id, self, GeneticAlgorithm(cost_matrix, graph=graph), speedy)
             self.schedule.add(agent)
 
         for index_agent in range(nbr_of_tabou):
             unique_id = 'tabou_{}'.format(index_agent)
-            agent = AgentMeta(unique_id, self, Tabou(vehicles, cost_matrix, graph), speedy)
+            agent = AgentMeta(unique_id, self, Tabou(cost_matrix, graph=graph), speedy)
             self.schedule.add(agent)
 
         for index_agent in range(nbr_of_recuit):

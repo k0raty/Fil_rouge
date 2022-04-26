@@ -40,7 +40,7 @@ class Scenarios:
     """
 
     def friend_interaction_best_fitness(self, nbr_of_iteration=5):
-        model_sma = ModelSma(nbr_of_genetic=1, nbr_of_tabou=1)
+        model_sma = ModelSma(nbr_of_genetic=1, nbr_of_tabou=1, nbr_of_recuit=0)
 
         for iteration in range(nbr_of_iteration):
             if len(model_sma.Pool.pool) > 0:
@@ -66,7 +66,7 @@ class Scenarios:
     """
 
     def friend_interaction_best_solutions(self, nbr_of_iteration=5):
-        model_sma = ModelSma(nbr_of_genetic=1, nbr_of_tabou=1)
+        model_sma = ModelSma(nbr_of_genetic=1, nbr_of_tabou=1, nbr_of_recuit=0)
 
         for iteration in range(nbr_of_iteration):
             if len(model_sma.Pool.pool) > 0:
@@ -92,7 +92,7 @@ class Scenarios:
     """
 
     def friend_interaction_random_solution(self, nbr_of_iteration=5):
-        model_sma = ModelSma(nbr_of_genetic=1, nbr_of_tabou=1)
+        model_sma = ModelSma(nbr_of_genetic=1, nbr_of_tabou=1, nbr_of_recuit=0)
 
         for iteration in range(nbr_of_iteration):
             if len(model_sma.Pool.pool) > 0:
@@ -119,7 +119,7 @@ class Scenarios:
     """
 
     def friend_interaction_random_solutions(self, nbr_of_iteration=5):
-        model_sma = ModelSma(nbr_of_genetic=1, nbr_of_tabou=1)
+        model_sma = ModelSma(nbr_of_genetic=1, nbr_of_tabou=1, nbr_of_recuit=0)
 
         solution = []
         for iteration in range(nbr_of_iteration):

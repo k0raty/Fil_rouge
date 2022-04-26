@@ -9,7 +9,6 @@ set_root_dir()
 
 
 class Database:
-    Vehicles = []
     Graph = []
 
     def __init__(self, speed=20):
@@ -29,8 +28,7 @@ class Database:
     def refresh(self):
         self.Graph = create_graph(self.df_customers, self.df_vehicles, self.speed)
         nbr_of_customer = len(self.df_customers)
-
-        self.Vehicles = self.Graph.nodes[0]['Camion']
+        nbr_of_vehicles = len(self.df_vehicles)
 
         message = 'Read {} customers and {} vehicles from the dataset.'
-        print(message.format(nbr_of_customer, len(self.Vehicles['VEHICLE_CODE'])))
+        print(message.format(nbr_of_customer, nbr_of_vehicles))
