@@ -4,7 +4,7 @@
 Recuit-simulé sur la base de donnée du fil rouge, plusieurs notions à prendre en compte, l'algo se déroule en 3 étapes:
     -Initialisation -> on fait un premier recuit qui réalise l'algorithme du problème du voyageur, à partir de cela on initialise une première solution vérifiant les contraintes
     -Recuit -> Par un recuit , on perturbe notre solution en mélangeant les clients des différents camions uniquement, on récupère une solution x lorsque cela n'évolue plus.
-    -Affinement -> On perturbe l'ordre de desservissement des clients pour un camion en question puis on retourne la meilleure solution.
+    -Affinement -> On perturbe l'initial_order de desservissement des clients pour un camion en question puis on retourne la meilleure solution.
 Au niveau des contraintes:
     - On respecte les intervalles de temps pour desservir en temps et en heure chaque client
     -On respecte les ressources à livrer au niveau du poids en kg
@@ -20,6 +20,8 @@ Concernant la solution retournée :
 """
 
 """ Import librairies """
+import os 
+os.chdir(r'C:\Users\anton\Documents\ICO\Fil_rouge\alexandre')
 import copy
 import numpy as np
 import random as rd
@@ -31,151 +33,106 @@ import matplotlib.pyplot as plt
 import warnings
 import utm
 
+os.chdir(r'C:\Users\anton\Documents\ICO\Fil_rouge\alexandre')
+
 """ Import utilities """
 from Utility.database import Database
 from Utility.common import *
+
 from Metaheuristics.SimulatedAnnealing.simulated_annealing_initialization import main
 
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
 
 class Annealing:
-    INITIAL_TEMPERATURE = 1500
-    VEHICLE_SPEED = 50
+    
 
     fitness: float = 0
     solution: list = []
 
-    def __init__(self, customers=None, depot=None, vehicles=None, cost_matrix=None):
+    def __init__(self, customers=None, depot=None, vehicles=None, cost_matrix=None,INITIAL_TEMPERATURE = 1500,VEHICLE_SPEED = 50):
         if customers is None:
-            database = Database()
-
+            database = Database(VEHICLE_SPEED)
             customers = database.Customers
             vehicles = database.Vehicles
+            graph=database.graph
             depot = database.Depots[0]
-            cost_matrix = compute_cost_matrix(customers, depot)
+            #cost_matrix = compute_cost_matrix(customers, depot)
 
-        self.COST_MATRIX = cost_matrix
-
+        #self.COST_MATRIX = cost_matrix
+        self.graph=graph
         self.Customers = customers
         self.Depot = depot
         self.Vehicles = vehicles
 
         self.NBR_OF_CUSTOMER = len(customers)
-        self.NBR_OF_VEHICLE = len(vehicles)
+        self.NBR_OF_VEHICLE = len(self.Vehicles['VEHICLE_CODE'])
+        self.T=INITIAL_TEMPERATURE
+        self.speed=VEHICLE_SPEED
 
-    """
-    Main function , réalise le recuit. 
+    def main(self, initial_solution=None,speedy=True):
+        
+        """
+        Main function , réalise le recuit. 
 
-    Parameters
-    ----------
-    df_customers : tableur excel renseignant sur les clients
-    df_vehicles : tableur excel renseignant sur les camions à disposition 
-    v : Vitesse des véhicules
-    T : Température de départ lors de la phase de recuit.
-    ----------
-    
-    Returns
-    -------
-    x : Solution proposée 
-    -------
-    """
-
-    def main(self, initial_solution=None):
-        graph = self.create_graph()
+        Parameters
+        ----------
+        df_customers : tableur excel renseignant sur les clients
+        df_vehicles : tableur excel renseignant sur les camions à disposition 
+        v : Vitesse des véhicules
+        T : Température de départ lors de la phase de recuit.
+        speedy: Si c'est en phase rapide ou non (très peu d'itérations)
+        ----------
+        
+        Returns
+        -------
+        x : Solution proposée 
+        -------
+        """
+        initial_solution=list(pd.read_pickle(r"C:\Users\anton\Documents\ICO\Fil_rouge\alexandre\Metaheuristics\SimulatedAnnealing\df_ordre_init.pkl")['Ordre'])
+        graph = self.graph
+        self.speedy=speedy
         print("Initialisation de la solution \n")
-
-        solution = self.init(graph)
-        self.plotting(solution, graph)
+        if initial_solution==None :
+            solution = self.init(graph)
+        else: solution=initial_solution
+        plotting(solution, graph)
         print("Solution initialisée , début de la phase de recuit \n")
-
-        solution = self.simulated_annealing(solution, graph, self.INITIAL_TEMPERATURE)
+        
+        solution = self.recuit_simulé(solution,graph,self.T,self.speedy)
+        self.fitness= energie(solution,graph)
+        print("Pour l'instant l'énergie est de :%d" %self.fitness)
         print("Début de la phase de perfectionnement de la solution \n")
 
-        solution = self.perturbation_intra(solution, graph)
+        solution = self.perturbation_intra(solution,graph,speedy)
+        self.fitness= energie(solution,graph)
+        print("Finalement l'énergie est de :%d" %self.fitness)
 
         return solution
 
-    """
-    Generate a graph
-    
-    Returns
-    -------
-    graph : fully generated and hydrated graph 
-    -------
-    """
+  
 
-    def create_graph(self):
-        df_vehicles = self.Vehicles
+    def init(self, graph,initial_order=None):
+        
+        """
+        Fonction d'initialisation du solution possible à n camions. 
+        Il y a beaucoup d'assertions car en effet, certains graph généré peuvent ne pas présenter de solution: 
+            -Pas assez de voiture pour finir la livraison dans le temps imparti
+            -Les ressources demandées peuvent être trop conséquentes 
+            -Ect...
 
-        graph = nx.empty_graph(self.NBR_OF_CUSTOMER)
-        dict_0 = {
-            'CUSTOMER_CODE': 0,
-            'CUSTOMER_LATITUDE': self.Depot.LATITUDE,
-            'CUSTOMER_LONGITUDE': self.Depot.LONGITUDE,
-            'CUSTOMER_TIME_WINDOW_FROM_MIN': self.Depot.DEPOT_AVAILABLE_TIME_FROM_MIN,
-            'CUSTOMER_TIME_WINDOW_TO_MIN': self.Depot.DEPOT_AVAILABLE_TIME_TO_MIN,
-            'TOTAL_WEIGHT_KG': 0,
-            'CUSTOMER_DELIVERY_SERVICE_TIME_MIN': 0,
-        }
-
-        graph.nodes[0].update(dict_0)
-        graph.nodes[0]['n_max'] = self.NBR_OF_VEHICLE
-        dict_vehicles = df_vehicles.to_dict()
-        graph.nodes[0]['Camion'] = dict_vehicles
-
-        for index_customer in range(0, len(graph.nodes)):
-            dict = self.Customers[index_customer].to_dict()
-            graph.nodes[index_customer].update(dict)
-
-        for index_i in range(len(graph.nodes)):
-            customer_i = self.Customers[index_i]
-
-            for index_j in range(len(graph.nodes)):
-                customer_j = self.Customers[index_j]
-
-                if index_i != index_j:
-                    distance = compute_distance(
-                        customer_i.LATITUDE,
-                        customer_i.LONGITUDE,
-                        customer_j.LATITUDE,
-                        customer_j.LONGITUDE,
-                    )
-                    graph.add_edge(index_i, index_j, weight=distance)
-
-                    graph[index_i][index_j]['time'] = (graph[index_i][index_j]['weight'] / self.VEHICLE_SPEED) * 60
-
-        p = [2, -100, self.NBR_OF_CUSTOMER]  # Equation pour trouver n_min
-        roots = np.roots(p)
-
-        # Nombre de voiture minimal possible , solution d'une équation de second degrès.
-        n_min = max(1, int(roots.min()) + 1)
-
-        graph.nodes[0]['n_min'] = n_min
-
-        return graph
-
-    """
-    Fonction d'initialisation du solution possible à n camions. 
-    Il y a beaucoup d'assertions car en effet, certains graph généré peuvent ne pas présenter de solution: 
-        -Pas assez de voiture pour finir la livraison dans le temps imparti
-        -Les ressources demandées peuvent être trop conséquentes 
-        -Ect...
-
-    Parameters
-    ----------
-    graph : Graph du problème
-    ----------
-    
-    Returns
-    -------
-    solution: list - a first valid solution .
-    -------
-    """
-
-    def init(self, graph):
+        Parameters
+        ----------
+        graph : Graph du problème
+        ----------
+        
+        Returns
+        -------
+        solution: list - a first valid solution .
+        -------
+        """
         # Assertions du début, afin de vérifier que l'on ne demande pas d'initialiser l'impossible
-
+        
         max_Q = max(graph.nodes[0]["Camion"]["VEHICLE_TOTAL_WEIGHT_KG"].values())
         max_ressources = sum(graph.nodes[0]["Camion"]["VEHICLE_TOTAL_WEIGHT_KG"].values())
 
@@ -203,9 +160,10 @@ class Annealing:
         nodes.pop(0)
 
         # Initialisation du dataframe renseignant sur les sommets et leurs contraintes
-        initial_order = main(graph)
-
-        message = "L'ordre initial n'est pas bon ,il ne commence pas par 0"
+        if initial_order == None : 
+            initial_order = main(graph)
+        
+        message = "L'initial_order initial n'est pas bon ,il ne commence pas par 0"
         assert (initial_order[0] == 0), message
 
         # Nos camions peuvent-ils livrer tout le monde ?
@@ -218,34 +176,33 @@ class Annealing:
         # On remplit la solution de la majorité des sommets
         df_camion = pd.DataFrame()  # Dataframe renseignant sur les routes, important pour la seconde phase de  remplissage
         df_camion.index = range(self.NBR_OF_VEHICLE)
-
+        n=self.NBR_OF_VEHICLE
         ressources = [graph.nodes[0]["Camion"]["VEHICLE_TOTAL_WEIGHT_KG"][i] for i in
                       range(0, n)]  # On commence par les camions aux ressources les plus importantes
         df_camion['Ressources'] = ressources
-        df_ordre = pd.DataFrame(
+        df_initial_order = pd.DataFrame(
             columns=["Camion", "Ressource_to_add", "Id", "CUSTOMER_TIME_WINDOW_FROM_MIN", "CUSTOMER_TIME_WINDOW_TO_MIN",
                      "Ressource_camion"])
         camion = 0
 
         i = 1  # On ne prend pas en compte le zéros du début
-        with tqdm(total=len(Ordre)) as pbar:
-            while i < len(Ordre):
+        with tqdm(total=len(initial_order)) as pbar:
+            while i < len(initial_order):
                 assert camion < n, "Impossible d'initialiser , les camions ne sont pas assez nombreux"
-                nodes_to_add = Ordre[i]
+                nodes_to_add = initial_order[i]
                 assert (nodes_to_add != 0), "Le chemin proposé repasse par le dépot !"
 
-                q_nodes = G.nodes[nodes_to_add]['TOTAL_WEIGHT_KG']
-                int_min = G.nodes[nodes_to_add]["CUSTOMER_TIME_WINDOW_FROM_MIN"]
-                int_max = G.nodes[nodes_to_add]["CUSTOMER_TIME_WINDOW_TO_MIN"]
+                q_nodes = graph.nodes[nodes_to_add]['TOTAL_WEIGHT_KG']
+                int_min = graph.nodes[nodes_to_add]["CUSTOMER_TIME_WINDOW_FROM_MIN"]
+                int_max = graph.nodes[nodes_to_add]["CUSTOMER_TIME_WINDOW_TO_MIN"]
                 dict = [{"Camion": camion, "Ressource_to_add": q_nodes, "Id": nodes_to_add,
                          "CUSTOMER_TIME_WINDOW_FROM_MIN": int_min, "CUSTOMER_TIME_WINDOW_TO_MIN": int_max,
                          "Ressource_camion": df_camion.loc[camion]['Ressources']}]
                 temp = copy.deepcopy(solution[camion])
                 temp.append(nodes_to_add)
-                if (df_camion.loc[camion]['Ressources'] >= q_nodes and check_temps_part(temp, G) == True):
-                    Q = G.nodes[0]['Camion']['VEHICLE_TOTAL_WEIGHT_KG'][camion]
-                    assert (
-                                q_nodes <= Q), "Certaines ville ont des ressources plus élevés que la capacité de stockage du camion"
+                if (df_camion.loc[camion]['Ressources'] >= q_nodes and check_temps_part(temp, graph) == True):
+                    Q = graph.nodes[0]['Camion']['VEHICLE_TOTAL_WEIGHT_KG'][camion]
+                    assert (q_nodes <= Q), "Certaines ville ont des ressources plus élevés que la capacité de stockage du camion"
                     solution[camion].append(nodes_to_add)
                     df_camion['Ressources'].loc[camion] += -q_nodes
                     i += 1
@@ -256,171 +213,32 @@ class Annealing:
                     assert (solution[camion] != temp)
                     camion += 1
 
-                df_ordre = df_ordre.append(dict)
+                df_initial_order = df_initial_order.append(dict)
 
         for i in solution:
             i.append(0)
         ###Assertion pour vérifier que tout fonctionne bien###
 
-        assert (check_constraint(solution, G) == True), "Mauvaise initialisation au niveau du temps"
-        check_forme(solution, G)
+        assert (check_constraint(solution, graph) == True), "Mauvaise initialisation au niveau du temps"
+        check_forme(solution, graph)
 
         ###Affichage de la première solution###
-        plotting(solution, G)
+        plotting(solution, graph)
         return solution
 
     # A ADAPTER DANS LA CLASSE
-    def temperature(E, E0):
+    def temperature(self,E, E0):
         """
         Fonction température
         """
         return (1 / math.log(E0 - E)) * 1500
 
     # A ADAPTER DANS LA CLASSE MAIS JE PENSE QU'IL EST DANS validator
-    def check_temps(x, G):
-        """
-        Fonction de vérification de contrainte conçernant les intervalles de temps. 
-            -Chaque camion part au même moment, cependant leurs temps de trajets sont pris en compte
-            seulement lorsque ceux-ci sont arrivés chez le premier client.
-        Parameters
-        ----------
-        x : Solution à évaluer
-        G : Graphe du problème
-
-        Returns
-        -------
-        bool
-            Si oui ou non, les intervalles de temps sont bien respectés dans le routage crée.
-            Le camion peut marquer des pauses.
+   
+    def recuit_simulé(self,x, G, T,speedy):
 
         """
-        K = len(x)
-        for route in range(0, K):
-            df_temps = pd.DataFrame(columns=['temps', 'route', 'temps_de_parcours', 'limite_inf', 'limite_sup'])
-            temps = G.nodes[0]['CUSTOMER_TIME_WINDOW_FROM_MIN']  # Temps d'ouverture du dépot
-            for i in range(1, len(x[route]) - 1):  # On ne prend pas en compte l'aller dans l'intervalle de temps
-                first_node = x[route][i]
-                second_node = x[route][i + 1]
-                if second_node != 0:
-                    temps += G[first_node][second_node]['time']  # temps mis pour parcourir la route en minute
-                    while temps < G.nodes[second_node]['CUSTOMER_TIME_WINDOW_FROM_MIN']:
-                        temps += 1  # Le camion est en pause
-                    dict = {'temps': temps, 'route': (first_node, second_node),
-                            'temps_de_parcours': G[first_node][second_node]['time'],
-                            'limite_inf': G.nodes[second_node]['CUSTOMER_TIME_WINDOW_FROM_MIN'],
-                            'limite_sup': G.nodes[second_node]['CUSTOMER_TIME_WINDOW_TO_MIN'], "camion": route}
-                    df_temps = df_temps.append([dict])
-                    if (temps < G.nodes[second_node]['CUSTOMER_TIME_WINDOW_FROM_MIN'] or temps > G.nodes[second_node][
-                        'CUSTOMER_TIME_WINDOW_TO_MIN']):
-                        return False
-                    temps += G.nodes[second_node]["CUSTOMER_DELIVERY_SERVICE_TIME_MIN"] / 10
-        return True
-
-    # A ADAPTER DANS LA CLASSE MAIS JE PENSE QU'IL EST DANS validator
-    def check_temps_part(x, G):
-
-        """
-        Fonction de vérification de contrainte conçernant les intervalles de temps. 
-            -Chaque camion part au même moment, cependant leurs temps de trajets sont pris en compte
-            seulement lorsque celui-ci est arrivé chez le premier client.
-        Parameters
-        ----------
-        x : Trajectoire de camion à évaluer
-        G : Graphe du problème
-
-        Returns
-        -------
-        bool
-            Si oui ou non, les intervalles de temps sont bien respectés dans le routage crée pour le camion en question .
-            Le camion peut marquer des pauses.
-
-        """
-
-        df_temps = pd.DataFrame(columns=['temps', 'route', 'temps_de_parcours', 'limite_inf', 'limite_sup'])
-        temps = G.nodes[0]['CUSTOMER_TIME_WINDOW_FROM_MIN']  # Temps d'ouverture du dépot
-        for i in range(1, len(x) - 1):
-            first_node = x[i]
-            second_node = x[i + 1]
-            if second_node != 0:  # On ne prend pas en compte l'arrivée non plus
-                temps += G[first_node][second_node]['time']  # temps mis pour parcourir la route en minute
-                while temps < G.nodes[second_node]['CUSTOMER_TIME_WINDOW_FROM_MIN']:
-                    temps += 1  # Le camion est en pause
-                dict = {'temps': temps, 'route': (first_node, second_node),
-                        'temps_de_parcours': G[first_node][second_node]['time'],
-                        'limite_inf': G.nodes[second_node]['CUSTOMER_TIME_WINDOW_FROM_MIN'],
-                        'limite_sup': G.nodes[second_node]['CUSTOMER_TIME_WINDOW_TO_MIN']}
-                df_temps = df_temps.append([dict])
-                if (temps < G.nodes[second_node]['CUSTOMER_TIME_WINDOW_FROM_MIN'] or temps > G.nodes[second_node][
-                    'CUSTOMER_TIME_WINDOW_TO_MIN']):
-                    return False
-
-                temps += G.nodes[second_node]["CUSTOMER_DELIVERY_SERVICE_TIME_MIN"] / 10
-        return True
-
-    # A ADAPTER DANS LA CLASSE
-    def check_ressource(route, Q, G):
-        """
-        Fonction de vérification de contrainte des ressources. 
-
-        Parameters
-        ----------
-        route : x[route], correspond à la route que va parcourir notre camion.
-        Q : Ressource du camion considéré
-        G : Graph du problème
-
-        Returns
-        -------
-        bool
-            Si oui ou non, le camion peut en effet desservir toute les villes en fonction de ses ressources. 
-
-        """
-        ressource = Q
-        for nodes in route:
-            ressource = ressource - G.nodes[nodes]['TOTAL_WEIGHT_KG']
-            if ressource < 0:
-                return False
-        return True
-
-
-    # A ADAPTER DANS LA CLASSE
-    def plotting(x, G):
-        """
-        Affiche les trajectoires des différents camion entre les clients.
-        Chaque trajectoire a une couleur différente. 
-
-        Parameters
-        ----------
-        x : Routage solution
-        G : Graphe en question 
-
-        Returns
-        -------
-        None.
-
-        """
-        plt.clf()
-        X = [G.nodes[i]['pos'][0] for i in range(0, len(G))]
-        Y = [G.nodes[i]['pos'][1] for i in range(0, len(G))]
-        plt.plot(X, Y, "o")
-        plt.text(X[0], Y[0], "0", color="r", weight="bold", size="x-large")
-        plt.title("Trajectoire de chaque camion")
-        colors = ['blue', 'orange', 'green', 'red', 'purple', 'brown', 'pink', 'gray', 'olive', 'cyan']
-        couleur = 0
-        for camion in range(0, len(x)):
-            assert (camion < len(colors)), "Trop de camion, on ne peut pas afficher"
-            if len(x) > 2:
-                xo = [X[o] for o in x[camion]]
-                yo = [Y[o] for o in x[camion]]
-                plt.plot(xo, yo, colors[couleur], label=G.nodes[0]["Camion"]["VEHICLE_VARIABLE_COST_KM"][camion])
-                couleur += 1
-        plt.legend(loc='upper left')
-        plt.show()
-
-    # A ADAPTER DANS LA CLASSE
-    def recuit_simulé(x, G, T):
-
-        """
-        Fonction de recuit qui mélanges les clients de chaque camion mais qui ne modifie pas l'ordre de deservissement pour un camion en question. 
+        Fonction de recuit qui mélanges les clients de chaque camion mais qui ne modifie pas l'initial_order de deservissement pour un camion en question. 
         Il y a beaucoup d'assertions afin de vérifier que la perturbation engendrée ne crée pas de problème de contraintes.  
            -On prend un sommet d'une route parcourue par un camion pour l'ajouter à une autre route
            -Il est possible qu'à chaque étape ,il n'y ait pas de modification. 
@@ -431,6 +249,7 @@ class Annealing:
         ----------
         x : Solution à perturber
         G : Graph du problème 
+        speedy : Si oui ou non on effectue une unique itération
         
         Returns
         -------
@@ -539,10 +358,12 @@ class Annealing:
             num_x = sum([len(i) for i in x])  # On vérifie qu'aucun sommet n'a été oublié
             assert (num_very_old_x == num_x)
             E = energie(best_x, G)
-
+            if speedy==True :
+                print("Mode speed_run \n")
+                return best_x
             ###Modification de la température###
             if E0 > E:
-                T = temperature(E, E0)
+                self.T = self.temperature(E, E0)
                 T_list.append(T)
                 E_list.append(E)
 
@@ -562,78 +383,8 @@ class Annealing:
         plotting(x, G)
 
         return best_x
-
-    # A ADAPTER DANS LA CLASSE
-    def energie(x, G):
-        """
-        Fonction coût pour le recuit
-
-        Parameters
-        ----------
-        x : solution
-        G : Graph du problème
-
-        Returns
-        -------
-        somme : Le coût de la solution
-
-        """
-        K = len(x)
-        somme = 0
-        for route in range(0, K):
-            if len(x[route]) > 2:  # si la route n'est pas vide
-                w = G.nodes[0]['Camion']['VEHICLE_VARIABLE_COST_KM'][
-                    route]  # On fonction du coût d'utilisation du camion
-                weight_road = sum(
-                    [G[x[route][sommet]][x[route][sommet + 1]]['weight'] for sommet in range(0, len(x[route]) - 1)])
-                somme += weight_road
-                somme += w * weight_road
-        return somme
-
-    # A ADAPTER DANS LA CLASSE
-    def energie_part(x, G, camion):
-        """
-        Fonction coût partielle pour le recuit qui calcule uniquement le coût d'un trajet uniquement
-
-        Parameters
-        ----------
-        x : solution
-        G : Graph du problème
-        camion : camion à évaluer
-        Returns
-        -------
-        somme : Le coût de la solution partielle
-
-        """
-        if len(x) > 2:  # si la route n'est pas vide
-            w = G.nodes[0]['Camion']['VEHICLE_VARIABLE_COST_KM'][camion]  # On fonction du coût d'utilisation du camion
-            somme = sum([G[x[sommet]][x[sommet + 1]]['weight'] for sommet in range(0, len(x) - 1)])
-            somme += w * somme  # facteur véhicule
-            return somme
-        else:
-            return 0
-
-    # A ADAPTER DANS LA CLASSE MAIS JE PENSE QU'IL EST DANS validator
-    def check_constraint(x, G):
-        """
-        Vérifie que les contraintes principales sont vérifiée:
-            -Les ressources demandée par chaque client sur un trajet ne sont pas supérieure au 
-            disponibilités du camion 
-            -Les villes sont livrées en temps et en heure. 
-        """
-
-        Q = [G.nodes[0]['Camion']['VEHICLE_TOTAL_WEIGHT_KG'][i] for i in range(0, len(x))]
-        if (check_temps(x, G) == True):
-            for i in range(0, len(x)):
-                if (check_ressource(x[i], Q[i], G) != True):
-                    return False
-            else:
-                return True
-        else:
-            return False
-
-    # A ADAPTER DANS LA CLASSE
-    def perturbation_intra(x, G):
+        
+    def perturbation_intra(self,x,G,speedy):
         """
         Deuxième phase de perturbation , on n'échange plus des clients entre chaque trajectoire de camion  mais 
         seulement l'ordre des client pour chaque route
@@ -648,72 +399,42 @@ class Annealing:
         x : solution finale.
 
         """
-        d = energie(x, G)
-        d0 = d + 1
+        d  = energie(x,G)
+        d0 = d+1
         it = 1
-        list_E = [d]
-        while d < d0:
+        list_E=[d]
+        while d < d0 :
             it += 1
-            print("iteration", it, "d=", d)
+            print("iteration",it, "d=",d)
             d0 = d
-            for camion in tqdm(range(0, len(x))):
-                route = x[camion]
-                for i in range(1, len(route) - 1):
-                    for j in range(i + 2, len(route)):
-                        d_part = energie_part(route, G, camion)
+            for camion in tqdm(range(0,len(x))):
+                route=x[camion]
+                for i in range(1,len(route)-1) :
+                    for j in range(i+2,len(route)):
+                        d_part=energie_part(route,G,camion)
                         r = route[i:j].copy()
                         r.reverse()
                         route2 = route[:i] + r + route[j:]
-                        t = energie_part(route2, G, camion)
-                        if (t < d_part):
-                            if check_temps_part(route2, G) == True:
-                                x[camion] = route2
-            d = energie(x, G)
+                        t = energie_part(route2,G,camion)
+                        if (t < d_part): 
+                            if check_temps_part(route2,G)==True: 
+                                x[camion] = route2   
+            d=energie(x,G)
             list_E.append(d)
-            assert (check_temps(x, G) == True)
-            plotting(x, G)
+            assert(check_temps(x,G)==True)  
+            plotting(x,G)
+            if speedy == True :
+                break
         plt.clf()
-        plt.plot(list_E, 'o-')
+        plt.plot(list_E,'o-')
         plt.title("Evoluation de l'énergie lors de la seconde phase")
         plt.show()
-
+        
         ###Assertions de fin###
-
-        check_forme(x, G)
-        assert (check_constraint(x, G) == True), "Mauvaise initialisation au niveau du temps"
+        
+        check_forme(x,G)
+        assert(check_constraint(x,G)==True),"Mauvaise initialisation au niveau du temps"
         return x
-
-    # A ADAPTER DANS LA CLASSE MAIS JE PENSE QU'IL EST DANS validator
-    def check_forme(x, G):
-        """
-        Vérifie que la forme de la solution est correcte
-
-        Parameters
-        ----------
-        x : solution
-        G : Graphe du problème
-
-        Returns
-        -------
-        Assertions.
-
-        """
-        visite = pd.DataFrame(columns=["Client", "passage"])
-        for l in x:
-            for m in l:
-                if m not in list(visite["Client"]):
-                    dict = {"Client": m, "passage": 1}
-                    visite = visite.append([dict])
-                else:
-                    visite['passage'][visite['Client'] == m] += 1
-        assert (len(visite) == len(
-            G.nodes)), "Tout les sommets ne sont pas pris en compte"  # On vérifie que tout les sommets sont pris en compte
-        visite_2 = visite[visite['Client'] != 0]
-        assert (len(visite_2[visite_2['passage'] > 1]) == 0), "Certains sommets sont plusieurs fois déservis"
-        for i in range(0, len(x)):
-            assert ((x[i][0], x[i][-1]) == (0, 0)), "Ne départ pas ou ne revient pas au dépot"
-            assert (0 not in x[i][1:-1]), "Un camion repasse par 0"
-
-
-recuit = Recuit()
-x
+    # A ADAPTER DANS LA CLASSE
+   
+   
