@@ -2,22 +2,17 @@
 import random as rd
 from numpy import mean, argmin
 from seaborn import color_palette
-import matplotlib.pyplot as plt
 import matplotlib.lines as lines
 from copy import deepcopy
-import os
-import pandas as pd
-# import time
-# from math import floor
+from os.path import join
 
-os.chdir(r'C:\Users\anton\Documents\ICO\Fil_rouge\alexandre')
 
 """ Import utilities """
 from Utility.database import Database
 from Utility.common import *
 
 
-#set_root_dir()
+set_root_dir()
 
 
 class GeneticAlgorithm:
@@ -42,20 +37,19 @@ class GeneticAlgorithm:
     ----------
     """
 
-    def __init__(self,customers=None, depot=None, vehicles=None, cost_matrix=None,VEHICLE_SPEED=40):
+    def __init__(self, customers=None, depot=None, vehicles=None, cost_matrix=None, graph=None, vehicle_speed=40):
         if customers is None:
-            database = Database(VEHICLE_SPEED)
+            database = Database(vehicle_speed)
             customers = database.Customers
             vehicles = database.Vehicles
-            graph=database.graph
+            graph = database.graph
             depot = database.Depots[0]
             cost_matrix = compute_cost_matrix(customers, depot)
 
         self.COST_MATRIX = cost_matrix
-
-        self.graph=graph
+        self.Graph = graph
         self.Customers = customers  # correspond à graph.node[index_customer]
-        self.Depot = depot # correspond à graph.node[0]
+        self.Depot = depot  # correspond à graph.node[0]
         self.Vehicles = vehicles  # ne plus utiliser ça, et appliquer l'indice véhicule au noeud 0 du graphe graph.node[0]['Camion']
 
         self.NBR_OF_CUSTOMER = len(customers)
@@ -72,13 +66,11 @@ class GeneticAlgorithm:
     ----------
     """
 
-    def main(self, initial_solution=None,speedy=True):
-        # timestamp = floor(time.time())
-        # path = os.path.join('Metaheuristics', 'GeneticAlgorithm', 'Graphs', 'test_{}'.format(timestamp))
-        # os.mkdir(path)
-        df=pd.read_pickle(r"C:\Users\anton\Documents\ICO\Fil_rouge\alexandre\Dataset\ordre_50_it.pkl")
+    def main(self, initial_solution=None, speedy=True):
+        initial_solution_set = join('Dataset', 'Initialized', 'ordre_50_it.pkl')
+        df = pd.read_pickle(initial_solution_set)
+
         iteration = 0
-        #population = self.generate_population(initial_solution)
         population = list(df.iloc[0])
         fitness_history = []
 
@@ -325,7 +317,6 @@ class GeneticAlgorithm:
         leftover = self.NBR_OF_CUSTOMER % self.NBR_OF_VEHICLE
 
         for index_vehicle in range(self.NBR_OF_VEHICLE):
-            vehicle = self.Vehicles[index_vehicle]
             weight = 0
             delivery = []
 
@@ -336,10 +327,10 @@ class GeneticAlgorithm:
                 index_customer = order[index_order] - 1
                 customer = self.Customers[index_customer]
 
-                weight += customer.TOTAL_WEIGHT_KG
+                weight += customer['TOTAL_WEIGHT_KG']
 
-                if weight > vehicle.VEHICLE_TOTAL_WEIGHT_KG:
-                    weight = customer.TOTAL_WEIGHT_KG
+                if weight > self.Vehicles['VEHICLE_TOTAL_WEIGHT_KG'][index_vehicle]:
+                    weight = customer['TOTAL_WEIGHT_KG']
                     delivery.append(0)
 
                 delivery.append(order[index_order])
@@ -350,16 +341,15 @@ class GeneticAlgorithm:
             start = self.NBR_OF_VEHICLE * nbr_of_customer_by_vehicle
             end = self.NBR_OF_CUSTOMER
             weight = 0
-            vehicle = self.Vehicles[0]
 
             for index_order in range(start, end):
                 index_customer = order[index_order] - 1
                 customer = self.Customers[index_customer]
 
-                weight += customer.TOTAL_WEIGHT_KG
+                weight += customer['TOTAL_WEIGHT_KG']
 
-                if weight > vehicle.VEHICLE_TOTAL_WEIGHT_KG:
-                    weight = customer.TOTAL_WEIGHT_KG
+                if weight > self.Vehicles['VEHICLE_TOTAL_WEIGHT_KG'][0]:
+                    weight = customer['TOTAL_WEIGHT_KG']
                     solution[0].append(0)
 
                 solution[0].append(order[index_order])

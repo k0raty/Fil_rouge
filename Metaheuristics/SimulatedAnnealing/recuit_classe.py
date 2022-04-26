@@ -21,56 +21,48 @@ Concernant la solution retournée :
 
 """ Import librairies """
 import os 
-os.chdir(r'C:\Users\anton\Documents\ICO\Fil_rouge\alexandre')
 import copy
-import numpy as np
 import random as rd
-import networkx as nx
-import pandas as pd
 from tqdm import tqdm
 import math
 import matplotlib.pyplot as plt
 import warnings
-import utm
 
-os.chdir(r'C:\Users\anton\Documents\ICO\Fil_rouge\alexandre')
 
 """ Import utilities """
 from Utility.database import Database
 from Utility.common import *
-
 from Metaheuristics.SimulatedAnnealing.simulated_annealing_initialization import main
+
+
+set_root_dir()
 
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
 
 class Annealing:
-    
-
     fitness: float = 0
     solution: list = []
 
-    def __init__(self, customers=None, depot=None, vehicles=None, cost_matrix=None,INITIAL_TEMPERATURE = 1500,VEHICLE_SPEED = 50):
+    def __init__(self, customers=None, depot=None, vehicles=None, graph=None, initial_temperature=1500, vehicle_speed=50):
         if customers is None:
-            database = Database(VEHICLE_SPEED)
+            database = Database(vehicle_speed)
             customers = database.Customers
             vehicles = database.Vehicles
-            graph=database.graph
+            graph = database.graph
             depot = database.Depots[0]
-            #cost_matrix = compute_cost_matrix(customers, depot)
 
-        #self.COST_MATRIX = cost_matrix
-        self.graph=graph
+        self.graph = graph
         self.Customers = customers
         self.Depot = depot
         self.Vehicles = vehicles
 
         self.NBR_OF_CUSTOMER = len(customers)
         self.NBR_OF_VEHICLE = len(self.Vehicles['VEHICLE_CODE'])
-        self.T=INITIAL_TEMPERATURE
-        self.speed=VEHICLE_SPEED
+        self.T = initial_temperature
+        self.speed = vehicle_speed
 
-    def main(self, initial_solution=None,speedy=True):
+    def main(self, initial_solution=None, speedy=True):
         
         """
         Main function , réalise le recuit. 
@@ -89,7 +81,11 @@ class Annealing:
         x : Solution proposée 
         -------
         """
-        initial_solution=list(pd.read_pickle(r"C:\Users\anton\Documents\ICO\Fil_rouge\alexandre\Metaheuristics\SimulatedAnnealing\df_ordre_init.pkl")['Ordre'])
+        ordre_init_path = os.path.join('Metaheuristics', 'SimulatedAnnealing', 'df_ordre_init.pkl')
+        df = pd.read_pickle(ordre_init_path)
+
+        initial_solution = list(df['Ordre'])
+
         graph = self.graph
         self.speedy=speedy
         print("Initialisation de la solution \n")

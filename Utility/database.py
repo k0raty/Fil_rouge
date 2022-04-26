@@ -1,8 +1,12 @@
 """ Import librairies """
 import pandas as pd
-""" Import utilities """
-from Utility.common import create_G
+from os.path import join
 
+""" Import utilities """
+from Utility.common import create_G, set_root_dir
+
+
+set_root_dir()
 
 
 class Database:
@@ -10,9 +14,12 @@ class Database:
     Vehicles = []
     Depots = []
 
-    def __init__(self,speed):
-        self.df_customers =pd.read_excel(r"C:\Users\anton\Documents\ICO\Fil_rouge\alexandre\Dataset\table_2_customers_features.xls")
-        self.df_vehicles=pd.read_excel(r"C:\Users\anton\Documents\ICO\Fil_rouge\alexandre\Dataset\table_3_cars_features.xls")
+    def __init__(self, speed=20):
+        customer_path = join('Dataset', 'Tables', 'table_2_customers_features.xls')
+        vehicles_path = join('Dataset', 'Tables', 'table_3_cars_features.xls')
+
+        self.df_customers = pd.read_excel(customer_path)
+        self.df_vehicles = pd.read_excel(vehicles_path)
         self.df_vehicles=self.df_vehicles.drop(['Unnamed: 0'],axis=1)
         self.df_customers=self.df_customers.drop(['Unnamed: 0'],axis=1)
         self.speed=speed

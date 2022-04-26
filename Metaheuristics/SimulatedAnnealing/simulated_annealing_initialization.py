@@ -18,11 +18,6 @@ df_vehicles = df_vehicles.drop(['Unnamed: 0'], axis=1)
 df_customers = df_customers.drop(['Unnamed: 0'], axis=1)
 """
 
-def get_distance(z_1, z_2):
-    x_1, x_2, y_1, y_2 = z_1[0], z_2[0], z_1[1], z_2[1]
-    d = math.sqrt((x_1 - x_2) ** 2 + (y_1 - y_2) ** 2)
-    return d / 1000  # en km
-
 
 def create_G(df_customers, df_vehicles, v):
     """

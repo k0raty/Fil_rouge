@@ -31,15 +31,13 @@ class AgentMeta(Agent):
     solution = []
     initial_solution = None
 
-    def __init__(self, unique_id, model, meta,speedy):
+    def __init__(self, unique_id, model, meta, speedy):
         super().__init__(unique_id, model)
         self.meta = meta
-        self.speedy=speedy
+        self.speedy = speedy
 
     def step(self):
-   
-        self.meta.main(self.initial_solution,self.speedy)
-
+        self.meta.main(self.initial_solution, self.speedy)
         self.solution = self.meta.solution
         self.fitness = self.meta.fitness
 
@@ -82,7 +80,7 @@ class ModelSma(Model):
         depots = self.Database.Depots
         vehicles = self.Database.Vehicles
         graph=self.Database.graph
-        cost_matrix = compute_cost_matrix(graph)
+        cost_matrix = compute_cost_matrix(customers, depots)
 
         self.Pool = Pool(cost_matrix, vehicles)
 
@@ -95,18 +93,18 @@ class ModelSma(Model):
 
         for index_agent in range(nbr_of_genetic):
             unique_id = 'genetic_{}'.format(index_agent)
-            agent = AgentMeta(unique_id, self, GeneticAlgorithm(customers, depots, vehicles, cost_matrix),speedy)
+            agent = AgentMeta(unique_id, self, GeneticAlgorithm(customers, depots, vehicles, cost_matrix, graph), speedy)
             self.schedule.add(agent)
 
         for index_agent in range(nbr_of_tabou):
             unique_id = 'tabou_{}'.format(index_agent)
-            agent = AgentMeta(unique_id, self, Tabou(customers, depots, vehicles, cost_matrix),speedy)
+            agent = AgentMeta(unique_id, self, Tabou(customers, depots, vehicles, cost_matrix, graph), speedy)
             self.schedule.add(agent)
 
         
         for index_agent in range(nbr_of_recuit):
             unique_id = 'recuit_{}'.format(index_agent)
-            agent = AgentMeta(unique_id, self, Annealing(),speedy)
+            agent = AgentMeta(unique_id, self, Annealing(graph=graph), speedy)
             self.schedule.add(agent)
         
 
