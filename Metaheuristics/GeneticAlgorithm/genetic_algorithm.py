@@ -37,22 +37,18 @@ class GeneticAlgorithm:
     ----------
     """
 
-    def __init__(self, customers=None, depot=None, vehicles=None, cost_matrix=None, graph=None, vehicle_speed=40):
-        if customers is None:
+    def __init__(self, vehicles=None, cost_matrix=None, graph=None, vehicle_speed=40):
+        if graph is None:
             database = Database(vehicle_speed)
-            customers = database.Customers
             vehicles = database.Vehicles
-            graph = database.graph
-            depot = database.Depots[0]
-            cost_matrix = compute_cost_matrix(customers, depot)
+            graph = database.Graph
+            cost_matrix = compute_cost_matrix(graph)
 
         self.COST_MATRIX = cost_matrix
         self.Graph = graph
-        self.Customers = customers  # correspond à graph.node[index_customer]
-        self.Depot = depot  # correspond à graph.node[0]
-        self.Vehicles = vehicles  # ne plus utiliser ça, et appliquer l'indice véhicule au noeud 0 du graphe graph.node[0]['Camion']
+        self.Vehicles = vehicles
 
-        self.NBR_OF_CUSTOMER = len(customers)
+        self.NBR_OF_CUSTOMER = len(graph) - 1  # the depot is not a customer
         self.NBR_OF_VEHICLE = len(vehicles)
 
         self.PROBA_MUTATION = 1 / self.NBR_OF_CUSTOMER
@@ -67,11 +63,11 @@ class GeneticAlgorithm:
     """
 
     def main(self, initial_solution=None, speedy=True):
-        initial_solution_set = join('Dataset', 'Initialized', 'ordre_50_it.pkl')
-        df = pd.read_pickle(initial_solution_set)
+        initial_solution_set_path = join('Dataset', 'Initialized', 'ordre_50_it.pkl')
+        initial_solution_set = pd.read_pickle(initial_solution_set_path)
 
         iteration = 0
-        population = list(df.iloc[0])
+        population = list(initial_solution_set.iloc[0])
         fitness_history = []
 
         while iteration < self.MAX_ITERATION and self.fitness_change(fitness_history):
@@ -324,8 +320,8 @@ class GeneticAlgorithm:
             end = start + nbr_of_customer_by_vehicle
 
             for index_order in range(start, end):
-                index_customer = order[index_order] - 1
-                customer = self.Customers[index_customer]
+                index_customer = order[index_order]
+                customer = self.Graph.nodes[index_customer]
 
                 weight += customer['TOTAL_WEIGHT_KG']
 
@@ -343,8 +339,8 @@ class GeneticAlgorithm:
             weight = 0
 
             for index_order in range(start, end):
-                index_customer = order[index_order] - 1
-                customer = self.Customers[index_customer]
+                index_customer = order[index_order]
+                customer = self.Graph.nodes[index_customer]
 
                 weight += customer['TOTAL_WEIGHT_KG']
 
@@ -357,7 +353,7 @@ class GeneticAlgorithm:
         return solution
 
     """
-    Draw the graph showing all the customers summits and the depots, with the road taken to go through them
+    Draw the Graph showing all the customers summits and the depots, with the road taken to go through them
     
     Parameters
     ----------
@@ -370,7 +366,7 @@ class GeneticAlgorithm:
 
         vehicle_working = 0
 
-        colors = color_palette(n_colors=self.NBR_OF_VEHICLES)
+        colors = color_palette(n_colors=self.NBR_OF_VEHICLE)
 
         latitudes = []
         longitudes = []
@@ -393,7 +389,7 @@ class GeneticAlgorithm:
                 latitudes.append(summit.LATITUDE)
                 longitudes.append(summit.LONGITUDE)
 
-                if vehicle_working < self.NBR_OF_VEHICLES - 1:
+                if vehicle_working < self.NBR_OF_VEHICLE - 1:
                     vehicle_working += 1
                 else:
                     vehicle_working = 0
@@ -411,11 +407,12 @@ class GeneticAlgorithm:
                 latitudes = []
                 longitudes = []
 
-        plt.plot(self.Depots.LATITUDE, self.Depots.LONGITUDE, 'rs')
+        depot = self.Graph.nodes[0]
+        plt.plot(depot['LATITUDE'], depot['LONGITUDE'], 'rs')
 
         plt.xlabel('latitude')
         plt.ylabel('longitude')
-        plt.title('Solution graph')
+        plt.title('Solution Graph')
 
         depot_legend = lines.Line2D([], [], color='red', marker='s', linestyle='None', markersize=10, label='Depot')
         customer_legend = lines.Line2D([], [], color='blue', marker='o', linestyle='None', markersize=10,
@@ -427,7 +424,7 @@ class GeneticAlgorithm:
         fig.savefig(filepath, format='png')
 
     """
-    Draw the graph of the sum of the fitness values of the population at every iteration
+    Draw the Graph of the sum of the fitness values of the population at every iteration
     
     :param iteration: int - the number of the iteration in the algorithm shown
     :param history: list - the list of the fitness values for each previous iteration

@@ -32,22 +32,18 @@ class Tabou:
     ----------
     """
 
-    def __init__(self, customers=None, depot=None, vehicles=None, cost_matrix=None):
-        if customers is None:
+    def __init__(self, vehicles=None, cost_matrix=None, graph=None):
+        if graph is None:
             database = Database()
-
-            customers = database.Customers
+            graph = database.Graph
             vehicles = database.Vehicles
-            depot = database.Depots[0]
-            cost_matrix = compute_cost_matrix(customers, depot)
+            cost_matrix = compute_cost_matrix(graph)
 
         self.COST_MATRIX = cost_matrix
-
-        self.Customers = customers
-        self.Depot = depot
+        self.Graph = graph
         self.Vehicles = vehicles
 
-        self.NBR_OF_CUSTOMER = len(customers)
+        self.NBR_OF_CUSTOMER = len(graph) - 1
         self.NBR_OF_VEHICLE = len(vehicles)
 
     """
@@ -65,7 +61,7 @@ class Tabou:
     -------
     """
 
-    def main(self, initial_solution=None):
+    def main(self, initial_solution=None, speedy=False):
         if initial_solution is None:
             initial_solution = self.initialisation()
 
@@ -203,26 +199,26 @@ class Tabou:
         # we don't look at the arc with the depot
         for index_summit in range(1, nbr_of_summit - 1):
             summit = delivery[index_summit]
-            customer = self.Customers[summit - 1]
+            customer = self.Graph.nodes[summit]
 
-            weight += customer.TOTAL_WEIGHT_KG
+            weight += customer['TOTAL_WEIGHT_KG']
 
             if nbr_of_summit > 1:
                 previous_summit = delivery[index_summit - 1]
-                previous_customer = self.Customers[previous_summit - 1]
+                previous_customer = self.Graph.nodes[previous_summit]
 
-                dist = compute_distance(
-                    previous_customer.LATITUDE,
-                    previous_customer.LONGITUDE,
-                    customer.LATITUDE,
-                    customer.LONGITUDE,
+                dist = compute_spherical_distance(
+                    previous_customer['CUSTOMER_LATITUDE'],
+                    previous_customer['CUSTOMER_LONGITUDE'],
+                    customer['CUSTOMER_LATITUDE'],
+                    customer['CUSTOMER_LONGITUDE'],
                 )
 
                 time += dist / self.VEHICLE_SPEED / 60
 
             weight_criteria = weight > self.VEHICLE_CAPACITY
-            time_criteria = customer.CUSTOMER_TIME_WINDOW_FROM_MIN > time \
-                            or time > customer.CUSTOMER_TIME_WINDOW_TO_MIN
+            time_criteria = customer['CUSTOMER_TIME_WINDOW_FROM_MIN'] > time \
+                            or time > customer['CUSTOMER_TIME_WINDOW_TO_MIN']
 
             if weight_criteria or time_criteria:
                 return False
@@ -250,34 +246,39 @@ class Tabou:
         current_time = 481
 
         for index_customer in range(self.NBR_OF_CUSTOMER):
-            customer = self.Customers[index_customer]
+            customer = self.Graph.nodes[index_customer]
 
-            if customer.INDEX in delivered_customers:
+            if customer['INDEX'] in delivered_customers:
                 continue
 
-            if weight + customer.TOTAL_WEIGHT_KG > self.VEHICLE_CAPACITY:
+            if weight + customer['TOTAL_WEIGHT_KG'] > self.VEHICLE_CAPACITY:
                 continue
 
             potential_current_time = current_time
 
             if len(delivery) > 1:
-                previous_customer = self.Customers[delivery[-1]]
+                previous_customer = self.Graph.nodes[delivery[-1]]
 
-                dist = compute_distance(previous_customer.LATITUDE, previous_customer.LONGITUDE, customer.LATITUDE,
-                                        customer.LONGITUDE)
+                dist = compute_spherical_distance(
+                    previous_customer['CUSTOMER_LATITUDE'],
+                    previous_customer['CUSTOMER_LONGITUDE'],
+                    customer['CUSTOMER_LATITUDE'],
+                    customer['CUSTOMER_LONGITUDE'],
+                )
 
                 time_to_new_customer = dist / self.VEHICLE_SPEED / 60
 
                 potential_current_time += time_to_new_customer
 
-            if customer.CUSTOMER_TIME_WINDOW_FROM_MIN > potential_current_time \
-                    or potential_current_time > customer.CUSTOMER_TIME_WINDOW_TO_MIN:
+            if customer['CUSTOMER_TIME_WINDOW_FROM_MIN'] > potential_current_time \
+                    or potential_current_time > customer['CUSTOMER_TIME_WINDOW_TO_MIN']:
+                print('customer out of time', customer)
                 continue
 
             current_time = potential_current_time
-            weight += customer.TOTAL_WEIGHT_KG
-            delivery.append(customer.INDEX)
-            delivered_customers.append(customer.INDEX)
+            weight += customer['TOTAL_WEIGHT_KG']
+            delivery.append(customer['INDEX'])
+            delivered_customers.append(customer['INDEX'])
 
             if weight >= self.VEHICLE_CAPACITY:
                 break
@@ -306,7 +307,6 @@ class Tabou:
 
         while len(delivered_customers) < self.NBR_OF_CUSTOMER:
             delivered_customers, delivery = self.generate_delivery(delivered_customers)
-
             solution.append(delivery)
 
             # post-processing to remove duplicated customers

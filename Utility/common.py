@@ -23,12 +23,6 @@ def set_root_dir():
 
 set_root_dir()
 
-
-v=50 #Vitesse des véhicules
-df_customers = pd.read_excel("Dataset/Tables/table_2_customers_features.xls")
-df_vehicles = pd.read_excel("Dataset/Tables/table_3_cars_features.xls")
-
-
 """
 Compute the distance in km between 2 coordinates around the earth
 
@@ -45,13 +39,36 @@ distance: float - the distance between the 2 given summits
 """
 
 
-def compute_distance(lat_1: float, lon_1: float, lat_2: float, lon_2: float) -> float:
+def compute_spherical_distance(lat_1: float, lon_1: float, lat_2: float, lon_2: float) -> float:
     deg_2_rad = pi / 180
     a = 0.5 - cos((lat_2 - lat_1) * deg_2_rad) / 2
     b = cos(lat_1 * deg_2_rad) * cos(lat_2 * deg_2_rad) * (1 - cos((lon_2 - lon_1) * deg_2_rad)) / 2
     radius_earth = 6371
 
     distance = 2 * radius_earth * asin(sqrt(a + b))
+
+    return distance
+
+
+"""
+Compute the distance in km between 2 coordinates on a plan
+
+Parameters
+----------
+pos_1 :tuple - first summit coordinates
+pos_2 :tuple - second summit coordinates 
+----------
+
+Returns
+-------
+distance :float - the distance between the 2 points
+-------
+"""
+
+
+def compute_plan_distance(pos_i: tuple, pos_j: tuple) -> float:
+    x_i, x_j, y_i, y_j = pos_i[0], pos_j[0], pos_i[1], pos_j[1]
+    distance = sqrt((x_i - x_j) ** 2 + (y_i - y_j) ** 2) / 1000
 
     return distance
 
@@ -75,11 +92,9 @@ fitness_score:float - value of the cost of this configuration
 
 
 def compute_fitness(solution: list, cost_matrix: np.ndarray, vehicles: list) -> float:
-    penalty = 5
     nbr_of_vehicle = len(solution)
 
-    solution_cost = nbr_of_vehicle * penalty
-
+    solution_cost=0
     for index_vehicle in range(nbr_of_vehicle):
         cost_by_distance = vehicles['VEHICLE_VARIABLE_COST_KM'][index_vehicle]
 
@@ -89,12 +104,13 @@ def compute_fitness(solution: list, cost_matrix: np.ndarray, vehicles: list) -> 
         nbr_of_summit = len(delivery)
 
         for index_summit in range(nbr_of_summit - 1):
-            summit_from = delivery[index_summit]
-            summit_to = delivery[index_summit + 1]
+            # remove 1 as the customer's index start at 1 (because depot is 0)
+            summit_from = delivery[index_summit] - 1
+            summit_to = delivery[index_summit + 1] - 1
 
             delivery_distance += cost_matrix[summit_from][summit_to]
 
-        solution_cost += delivery_distance * cost_by_distance
+        solution_cost += delivery_distance * cost_by_distance 
 
     return solution_cost
 
@@ -105,7 +121,6 @@ Fill a matrix storing the cost of the travel between every customers
 Parameters
 ----------
 customers: list - the list of customers with their coordinates
-depot: Utility.Depot - the unique depot of the problem
 ----------
 
 Returns
@@ -116,14 +131,16 @@ site i and j
 """
 
 
-def compute_cost_matrix(customers: list, depot) -> np.ndarray:
-    nbr_of_customer = len(customers)
+def compute_cost_matrix(graph) -> np.ndarray:
+    nbr_of_customer = len(graph)
     cost_matrix = np.zeros((nbr_of_customer + 1, nbr_of_customer + 1))
 
-    for index_i in range(nbr_of_customer):
-        customer_i = customers[index_i]
+    depot = graph.nodes[0]
 
-        distance_to_depot = compute_distance(
+    for index_i in range(nbr_of_customer):
+        customer_i = graph.nodes[index_i]
+
+        distance_to_depot = compute_spherical_distance(
             depot['CUSTOMER_LATITUDE'],
             depot['CUSTOMER_LONGITUDE'],
             customer_i['CUSTOMER_LATITUDE'],
@@ -134,9 +151,9 @@ def compute_cost_matrix(customers: list, depot) -> np.ndarray:
         cost_matrix[index_i, 0] = distance_to_depot
 
         for index_j in range(nbr_of_customer):
-            customer_j = customers[index_j]
+            customer_j = graph.nodes[index_j]
 
-            distance_from_i_to_j = compute_distance(
+            distance_from_i_to_j = compute_spherical_distance(
                 customer_i['CUSTOMER_LATITUDE'],
                 customer_i['CUSTOMER_LONGITUDE'],
                 customer_j['CUSTOMER_LATITUDE'],
@@ -150,68 +167,76 @@ def compute_cost_matrix(customers: list, depot) -> np.ndarray:
 
 
 """
-Shortcut to get the class of an object
+Parameters
+----------
+df_customers : Dataframe contenant les informations sur les clients
+df_vehicles : Dataframe contenant les informations sur les camions livreurs
+----------
+
+Returns
+-------
+graph : Graph plein généré
+-------
 """
 
 
-def classe(instance):
-    return type(instance).__name__
+def create_graph(df_customers, df_vehicles, vehicle_speed=50):
+    nbr_of_vehicle = len(df_vehicles)
+    nbr_of_summit = len(df_customers)
 
+    graph = nx.empty_graph(nbr_of_summit + 1)  # we add one for the depot
 
-def create_G(df_customers, df_vehicles, v):
-    """
-    Parameters
-    ----------
-    df_customers : Dataframe contenant les informations sur les clients
-    df_vehicles : Dataframe contenant les informations sur les camions livreurs
-    Returns
-    -------
-    G : Graph plein généré
-    """
-    n_max = len(df_vehicles)  # Le nombre maximum de voitures qu'on mettrai à disposition.
-    n_sommet = len(df_customers)
-    G = nx.empty_graph(n_sommet)
     (x_0, y_0) = utm.from_latlon(43.37391833, 17.60171712)[:2]
-    dict_0 = {'CUSTOMER_CODE': 0, 'CUSTOMER_LATITUDE': 43.37391833, 'CUSTOMER_LONGITUDE': 17.60171712,
-              'CUSTOMER_TIME_WINDOW_FROM_MIN': 360, 'CUSTOMER_TIME_WINDOW_TO_MIN': 1080, 'TOTAL_WEIGHT_KG': 0,
-              'pos': (x_0, y_0), "CUSTOMER_DELIVERY_SERVICE_TIME_MIN": 0}
-    G.nodes[0].update(dict_0)
-    G.nodes[0]['n_max'] = n_max  # Nombre de voiture maximal
+    depot_dict = {
+        'CUSTOMER_CODE': 0,
+        'CUSTOMER_LATITUDE': 43.37391833,
+        'CUSTOMER_LONGITUDE': 17.60171712,
+        'CUSTOMER_TIME_WINDOW_FROM_MIN': 360,
+        'CUSTOMER_TIME_WINDOW_TO_MIN': 1080,
+        'TOTAL_WEIGHT_KG': 0,
+        'pos': (x_0, y_0),
+        'CUSTOMER_DELIVERY_SERVICE_TIME_MIN': 0,
+        'INDEX': 0,
+    }
+
+    graph.nodes[0].update(depot_dict)
+
+    graph.nodes[0]['n_max'] = nbr_of_vehicle
+
     dict_vehicles = df_vehicles.to_dict()
-    G.nodes[0]['Camion'] = dict_vehicles
-    for i in range(1, len(G.nodes)):
-        dict = df_customers.iloc[i].to_dict()
-        dict['pos'] = utm.from_latlon(dict['CUSTOMER_LATITUDE'], dict['CUSTOMER_LONGITUDE'])[:2]
-        G.nodes[i].update(dict)
 
-        ###On rajoute les routes###
-    for i in range(0, len(G.nodes)):
-        for j in range(0, len(G.nodes)):
-            if i != j:
-                z_1 = G.nodes[i]['pos']
-                z_2 = G.nodes[j]['pos']
-                G.add_edge(i, j, weight=get_distance(z_1, z_2))
-                G[i][j]['time'] = (G[i][j]['weight'] / v) * 60
+    graph.nodes[0]['Camion'] = dict_vehicles
 
-    G.nodes[0]['n_max'] = n_max  # Nombre de voiture maximal
-    p = [2, -100, n_sommet]  # Equation pour trouver n_min
+    for index_customer in range(nbr_of_summit):
+        customer = df_customers.iloc[index_customer]
+        customer_dict = customer.to_dict()
+        customer_dict['pos'] = utm.from_latlon(customer['CUSTOMER_LATITUDE'], customer_dict['CUSTOMER_LONGITUDE'])[:2]
+
+        graph.nodes[customer_dict['INDEX']].update(customer_dict)
+
+    for index_summit_i in range(len(graph.nodes)):
+        summit_i = graph.nodes[index_summit_i]
+
+        for index_summit_j in range(len(graph.nodes)):
+            summit_j = graph.nodes[index_summit_j]
+
+            if index_summit_i != index_summit_j:
+                distance = compute_plan_distance(summit_i['pos'], summit_j['pos'])
+                graph.add_edge(index_summit_i, index_summit_j, weight=distance)
+
+                duration = graph[index_summit_i][index_summit_j]['weight'] / vehicle_speed * 60
+                graph[index_summit_i][index_summit_j]['time'] = duration
+
+    p = [2, -100, nbr_of_summit]  # Equation pour trouver n_min
     roots = np.roots(p)
-    n_min = max(1,
-                int(roots.min()) + 1)  # Nombre de voiture minimal possible , solution d'une équation de second degrès.
-    G.nodes[0]['n_min'] = n_min
+    n_min = max(1, int(roots.min()) + 1)  # Nombre de voitures minimal possible
+    graph.nodes[0]['n_min'] = n_min
 
-    return G
-
-def get_distance(z_1,z_2):
-    """
-    Distance entre deux points sur plan z_1 et z_2
-    """
-    x_1, x_2, y_1, y_2 = z_1[0], z_2[0], z_1[1], z_2[1]
-    d = sqrt((x_1 - x_2) ** 2 + (y_1 - y_2) ** 2)
-    return d / 1000  # en km
+    return graph
 
 
-####Fonction pour le recuit_simulé###
+# Fonction pour le recuit_simulé
+
 def check_temps(x, G):
     """
     Fonction de vérification de contrainte conçernant les intervalles de temps.
@@ -366,7 +391,6 @@ def energie(x, G):
                 route]  # On fonction du coût d'utilisation du camion
             weight_road = sum(
                 [G[x[route][sommet]][x[route][sommet + 1]]['weight'] for sommet in range(0, len(x[route]) - 1)])
-            somme += weight_road
             somme += w * weight_road
     return somme
 
