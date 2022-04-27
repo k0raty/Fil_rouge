@@ -137,11 +137,9 @@ class Annealing:
 
         customers = [node for node in self.graph.nodes]
         customers.pop(0)
-        print('step 1')
         # Initialisation du dataframe renseignant sur les sommets et leurs contraintes
         if initial_order is None:
             initial_order = generate_order(self.graph)
-        print('step 2')
         message = 'The initial order should start with 0 (the depot)'
         assert (initial_order[0] == 0), message
 

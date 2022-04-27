@@ -108,8 +108,6 @@ class Tabou:
             is_neighbor_valid = is_solution_valid(neighbor, self.Graph)
             is_couple_new = inversion_couple not in self.tabou_list
 
-            print('neighbor valid', is_neighbor_valid)
-
             if is_fitness_better and is_neighbor_valid and is_couple_new:
                 solution = neighbor
                 fitness = neighbor_fitness

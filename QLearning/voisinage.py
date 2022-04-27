@@ -95,96 +95,86 @@ def IntraRouteShift(solution):
 
     return solution
 
-def InterRouteShift(solution):
-    """ Déplacement d'un client vers une autre position sur une route différente """
 
-    # On récupère deux routes au hasard
-    nb_road1 = rd.randrange(0,len(solution),1)
-    road1 = solution[nb_road1]
-    nb_road2 = rd.randrange(0,len(solution),1)
-    while nb_road1 == nb_road2 :
-        nb_road2 = rd.randrange(0,len(solution),1)
-    road2 = solution[nb_road2].copy()
+"""
+Déplacement d'un client vers une autre position sur une route différente
+"""
 
-    # On récupère un client au hasard et son nouvel indice
-    nb_client = rd.randrange(1,len(road1)-1,1)
-    new_index = rd.randrange(1,len(road2)-1,1)
-    while nb_client == new_index :
-        new_index = rd.randrange(1,len(road2)-1,1)
 
-    # On supprime le client de la liste initiale
-    client = road1.pop(nb_client)
-    solution[nb_road1] = road1
-    
-    # On procède au déplacement du client
-    new_road = []
-    i = 0
-    while i != new_index :
-        new_road.append(road2[0])
-        road2.pop(0)
-        i += 1
-    new_road.append(client)   # on ajoute le client déplacé
-    while road2 != []:
-        new_road.append(road2[0])
-        road2.pop(0)
-    solution[nb_road2] = new_road
+def inter_route_shift(solution):
+    if len(solution) <= 1:
+        return solution
+
+    index_delivery_1 = rd.randint(0, len(solution) - 1)
+    delivery_1 = solution[index_delivery_1]
+
+    index_delivery_2 = rd.randint(0, len(solution) - 1)
+
+    while index_delivery_1 == index_delivery_2:
+        index_delivery_2 = rd.randint(0, len(solution) - 1)
+
+    delivery_2 = solution[index_delivery_2]
+
+    index_customer = rd.randint(1, len(delivery_1) - 2)
+    new_index_customer = rd.randint(1, len(delivery_2) - 2)
+
+    customer = solution[index_delivery_1].pop(index_customer)
+    solution[index_delivery_2].insert(new_index_customer, customer)
 
     return solution
 
-def TwoIntraRouteSwap(solution):
-    """ Echange de deux clients consécutifs d'une même route avec deux autres clients consécutifs de façon aléatoire """
 
-    # On récupère une route au hasard
-    nb_road = rd.randrange(0,len(solution),1)
-    road = solution[nb_road]
+"""
+Echange de deux clients consécutifs d'une même route avec deux autres clients consécutifs de façon aléatoire
+"""
 
-    # On récupère quatre clients (deux consécutifs à chaque fois) au hasard
-    nb_client1 = rd.randrange(1,len(road)-2,1)    # on ne prend pas en compte les dépôts !
-    nb_client2 = nb_client1 + 1
-    nb_client3 = rd.randrange(1,len(road)-2,1)
-    while abs(nb_client1 - nb_client3) < 2 :
-        nb_client3 = rd.randrange(1,len(road)-2,1)
-    nb_client4 = nb_client3 + 1
+
+def two_intra_route_swap(solution):
+    index_delivery = rd.randint(0, len(solution) - 1)
+    delivery = solution[index_delivery]
+
+    index_customer_1 = rd.randint(1, len(delivery) - 3)
+    index_customer_2 = index_customer_1 + 1
+
+    index_customer_3 = rd.randint(1, len(delivery) - 3)
+
+    while abs(index_customer_1 - index_customer_3) < 2:
+        index_customer_3 = rd.randint(1, len(delivery) - 3)
+
+    index_customer_4 = index_customer_3 + 1
     
-    # On procède à l'échange des clients
-    aux1 = solution[nb_road][nb_client1]
-    solution[nb_road][nb_client1] = solution[nb_road][nb_client3]
-    solution[nb_road][nb_client3] = aux1
-    aux2 = solution[nb_road][nb_client2]
-    solution[nb_road][nb_client2] = solution[nb_road][nb_client4]
-    solution[nb_road][nb_client4] = aux2
+    customer_1 = delivery[index_customer_1]
+    customer_2 = delivery[index_customer_2]
+    customer_3 = delivery[index_customer_3]
+    customer_4 = delivery[index_customer_4]
+
+    solution[index_delivery][index_customer_1] = customer_3
+    solution[index_delivery][index_customer_2] = customer_4
+    solution[index_delivery][index_customer_3] = customer_1
+    solution[index_delivery][index_customer_4] = customer_2
 
     return solution
 
-def TwoIntraRouteShift(solution):
-    """ Déplacement de deux clients consécutifs vers une autre position sur la même route """
-    # On récupère une route au hasard
-    nb_road = rd.randrange(0,len(solution),1)
-    road = solution[nb_road].copy()
 
-    # On récupère deux clients au hasard et leurs nouveaux indices
-    nb_client1 = rd.randrange(1,len(road)-2,1)
-    new_index = rd.randrange(1,len(road)-2,1)
-    while abs(new_index - nb_client1) < 2 :
-        new_index = rd.randrange(1,len(road)-2,1)
+""" Déplacement de deux clients consécutifs vers une autre position sur la même route """
+
+
+def two_intra_route_shift(solution):
+    index_delivery = rd.randint(0, len(solution) - 1)
+    delivery = solution[index_delivery]
+
+    index_customer = rd.randint(1, len(delivery) - 2)
+
+    customer_1 = delivery.pop(index_customer)
+    customer_2 = delivery.pop(index_customer)
+
+    new_index_customer = rd.randint(1, len(delivery) - 2)
+
+    while abs(new_index_customer - index_customer) < 2:
+        new_index_customer = rd.randint(1, len(delivery) - 2)
     
-    # On procède au déplacement des clients
-    new_road = []
-    road.pop(nb_client1)  # on crée une route auxiliaire sans les clients à déplacer
-    road.pop(nb_client1)  # on a déjà décalé d'un indice
-    i = 0
-    while i != new_index :
-        new_road.append(road[0])
-        road.pop(0)
-        i += 1
-    client1 = solution[nb_road][nb_client1]
-    new_road.append(client1)   # on ajoute le client déplacé
-    client2 = solution[nb_road][nb_client1 + 1]
-    new_road.append(client2)   # on ajoute le client déplacé
-    while road != []:
-        new_road.append(road[0])
-        road.pop(0)
-    solution[nb_road] = new_road
+    solution[index_delivery].insert(new_index_customer, customer_2)
+    solution[index_delivery].insert(new_index_customer, customer_1)
 
     return solution
 
@@ -276,13 +266,13 @@ def perform_action(index_action, solution):
         return IntraRouteShift(solution)
 
     elif index_action == 3:
-        return InterRouteShift(solution)
+        return inter_route_shift(solution)
 
     elif index_action == 4:
-        return TwoIntraRouteSwap(solution)
+        return two_intra_route_swap(solution)
 
     elif index_action == 5:
-        return TwoIntraRouteShift(solution)
+        return two_intra_route_shift(solution)
 
     elif index_action == 6:
         return remove_smallest_road(solution)

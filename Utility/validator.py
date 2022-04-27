@@ -49,10 +49,10 @@ def is_solution_time_valid(solution: list, graph) -> bool:
             }
             df_temps = pd.concat([df_temps, pd.DataFrame.from_dict(delivery_data)])
 
-            if current_time > graph.nodes[next_customer]['CUSTOMER_TIME_WINDOW_TO_MIN']:
-                print('not respecting some customer\'s time window')
-                # TODO : modifying the dataset to make the customer's time window doable
-                # return False
+            # TODO : modifying the dataset to make the customer's time window doable
+            # if current_time > graph.nodes[next_customer]['CUSTOMER_TIME_WINDOW_TO_MIN']:
+            #   print('not respecting some customer\'s time window')
+            #   return False
 
             current_time += graph.nodes[next_customer]["CUSTOMER_DELIVERY_SERVICE_TIME_MIN"] / 10
 

@@ -119,7 +119,8 @@ class GeneticAlgorithm:
             index_min = argmin(fitness_list)
             self.solution = population[index_min]
 
-            print('Iteration {}, fitness {}'.format(iteration, fitness_list[index_min]))
+            message = 'Iteration {}, best fitness {}, mean fitness {}'
+            print(message.format(iteration, fitness_list[index_min], fitness_mean))
 
         self.fitness = compute_fitness(self.solution, self.COST_MATRIX, self.Graph)
         self.draw_fitness(iteration, fitness_history)

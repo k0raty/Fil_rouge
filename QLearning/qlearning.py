@@ -211,10 +211,7 @@ class Qlearning:
                     states_visited_count += 1
 
                 if no_improvement > self.MAX_ITER and states_visited_count == self.NBR_OF_ACTION:
-                    print('no improvement', no_improvement)
                     is_improving = False
-
-            print('next state', next_state)
 
         print('end enhancement')
         return [best_solution, best_solution_fitness, qtable, is_improving]
