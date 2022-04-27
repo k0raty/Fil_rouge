@@ -11,7 +11,7 @@ set_root_dir()
 class Database:
     Graph = []
 
-    def __init__(self, speed=20):
+    def __init__(self, vehicle_speed=20):
         customer_path = join('Dataset', 'Tables', 'table_2_customers_features.csv')
         vehicles_path = join('Dataset', 'Tables', 'table_3_cars_features.csv')
 
@@ -22,11 +22,11 @@ class Database:
         self.df_customers = df_customers
 
         self.df_vehicles = pd.read_csv(vehicles_path)
-        self.speed = speed
+        self.vehicle_speed = vehicle_speed
         self.refresh()
 
     def refresh(self):
-        self.Graph = create_graph(self.df_customers, self.df_vehicles, self.speed)
+        self.Graph = create_graph(self.df_customers, self.df_vehicles, self.vehicle_speed)
         nbr_of_customer = len(self.df_customers)
         nbr_of_vehicles = len(self.df_vehicles)
 

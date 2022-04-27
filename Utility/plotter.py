@@ -8,8 +8,8 @@ import networkx as nx
 import matplotlib.pyplot as plt
 import utm
 
+
 class Graphe:
-    
     def __init__(self, df):
         df['pos']=[utm.from_latlon(df['CUSTOMER_LATITUDE'].iloc[i],df['CUSTOMER_LONGITUDE'].iloc[i])[:2] for i in range(0,len(df))]
         self.df = df 
@@ -32,8 +32,7 @@ class Graphe:
         for i in range(0,nb_lines):
             dico_demande[str(df["CUSTOMER_CODE"][i])] = df["TOTAL_WEIGHT_KG"][i]
         self.dico_demande = dico_demande
-        
-    
+
     def plot_graph(self, x, spring_layout = True):
         graph_route = nx.DiGraph() #création du nouveau graphe des routes
         colors = [0]
@@ -57,6 +56,7 @@ class Graphe:
         plt.title(graph_label)
         plt.show()
         plt.clf()
+
 
 """
 ##### TEST DE LA CLASSE #####

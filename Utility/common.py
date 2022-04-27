@@ -68,9 +68,9 @@ distance :float - the distance between the 2 points
 """
 
 
-def compute_plan_distance(pos_i: tuple, pos_j: tuple) -> float:
-    x_i, x_j, y_i, y_j = pos_i[0], pos_j[0], pos_i[1], pos_j[1]
-    distance = sqrt((x_i - x_j) ** 2 + (y_i - y_j) ** 2) / 1000
+def compute_plan_distance(pos_1: tuple, pos_2: tuple) -> float:
+    x_1, x_2, y_1, y_2 = pos_1[0], pos_2[0], pos_1[1], pos_2[1]
+    distance = sqrt((x_1 - x_2) ** 2 + (y_1 - y_2) ** 2) / 1000
 
     return distance
 
@@ -204,6 +204,7 @@ def create_graph(df_customers, df_vehicles, vehicle_speed=50):
 
     graph.nodes[0].update(depot_dict)
 
+    graph.nodes[0]['VEHICLE_SPEED'] = vehicle_speed
     graph.nodes[0]['n_max'] = nbr_of_vehicle
 
     dict_vehicles = df_vehicles.to_dict()

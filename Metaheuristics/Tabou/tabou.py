@@ -5,6 +5,7 @@ import random as rd
 """ Import utilities """
 from Utility.database import Database
 from Utility.common import *
+from Utility.validator import *
 
 set_root_dir()
 
@@ -13,7 +14,6 @@ class Tabou:
     MAX_ITERATION = 10
     MAX_NEIGHBORS = 20
 
-    VEHICLE_SPEED = 50
     VEHICLE_CAPACITY = 5000
 
     fitness: float = 0
@@ -32,9 +32,9 @@ class Tabou:
     ----------
     """
 
-    def __init__(self, cost_matrix=None, graph=None):
+    def __init__(self, cost_matrix=None, graph=None, vehicle_speed=40):
         if graph is None:
-            database = Database()
+            database = Database(vehicle_speed)
             graph = database.Graph
             cost_matrix = compute_cost_matrix(graph)
 
@@ -96,10 +96,10 @@ class Tabou:
             neighbor_fitness = compute_fitness(neighbor, self.COST_MATRIX, self.Graph)
 
             is_fitness_better = neighbor_fitness < fitness
-            is_solution_valid = self.is_solution_valid(neighbor)
+            is_neighbor_valid = is_solution_valid(neighbor, self.Graph)
             is_couple_new = inversion_couple not in self.tabou_list
 
-            if is_fitness_better and is_solution_valid and is_couple_new:
+            if is_fitness_better and is_neighbor_valid and is_couple_new:
                 solution = neighbor
                 fitness = neighbor_fitness
 
@@ -150,80 +150,6 @@ class Tabou:
         return neighbor, inversion_couple
 
     """
-    Check if a solution match the validity criteria 
-
-    Parameters
-    -------
-    solution: list - a given solution
-    -------
-    
-    Returns
-    -------
-    :bool - the validity of the given solution
-    -------
-    """
-
-    def is_solution_valid(self, solution):
-        nbr_of_delivery = len(solution)
-
-        for index_delivery in range(nbr_of_delivery):
-            delivery = solution[index_delivery]
-
-            if not self.is_delivery_valid(delivery):
-                return False
-
-        return True
-
-    """
-    Check if a delivery match the validity criteria (for instance time constraints and vehicle's capacity)
-
-    Parameters
-    -------
-    delivery: list - a portion of a solution
-    -------
-    
-    Returns
-    -------
-    :bool - the validity of the given delivery
-    -------
-    """
-
-    def is_delivery_valid(self, delivery):
-        weight = 0
-        time = 481
-
-        nbr_of_summit = len(delivery)
-
-        # we don't look at the arc with the depot
-        for index_summit in range(1, nbr_of_summit - 1):
-            summit = delivery[index_summit]
-            customer = self.Graph.nodes[summit]
-
-            weight += customer['TOTAL_WEIGHT_KG']
-
-            if nbr_of_summit > 1:
-                previous_summit = delivery[index_summit - 1]
-                previous_customer = self.Graph.nodes[previous_summit]
-
-                dist = compute_spherical_distance(
-                    previous_customer['CUSTOMER_LATITUDE'],
-                    previous_customer['CUSTOMER_LONGITUDE'],
-                    customer['CUSTOMER_LATITUDE'],
-                    customer['CUSTOMER_LONGITUDE'],
-                )
-
-                time += dist / self.VEHICLE_SPEED / 60
-
-            weight_criteria = weight > self.VEHICLE_CAPACITY
-            time_criteria = customer['CUSTOMER_TIME_WINDOW_FROM_MIN'] > time \
-                            or time > customer['CUSTOMER_TIME_WINDOW_TO_MIN']
-
-            if weight_criteria or time_criteria:
-                return False
-
-        return True
-
-    """
     Generate a delivery for a portion of the solution, accordingly to the time and weigh constraints
 
     Parameters
@@ -243,7 +169,7 @@ class Tabou:
 
         current_time = 481
 
-        for index_customer in range(self.NBR_OF_CUSTOMER):
+        for index_customer in range(1, len(self.Graph)):
             customer = self.Graph.nodes[index_customer]
 
             if customer['INDEX'] in delivered_customers:
@@ -264,7 +190,7 @@ class Tabou:
                     customer['CUSTOMER_LONGITUDE'],
                 )
 
-                time_to_new_customer = dist / self.VEHICLE_SPEED / 60
+                time_to_new_customer = dist / self.Graph.nodes[0]['VEHICLE_SPEED'] / 60
 
                 potential_current_time += time_to_new_customer
 

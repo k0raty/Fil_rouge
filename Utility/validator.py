@@ -9,6 +9,7 @@ Parameters
 ----------
 solution :list - solution to the problem
 graph :? - graph of the problem
+----------
 
 Returns
 -------
@@ -18,7 +19,7 @@ Returns
 """
 
 
-def check_time(solution, graph):
+def is_solution_time_valid(solution: list, graph) -> bool:
     for index_delivery in range(len(solution)):
         delivery = solution[index_delivery]
 
@@ -43,7 +44,7 @@ def check_time(solution, graph):
                 'limite_sup': graph.nodes[next_customer]['CUSTOMER_TIME_WINDOW_TO_MIN'],
                 'camion': index_delivery,
             }
-            df_temps = df_temps.append([delivery_data])
+            df_temps = pd.concat([df_temps, pd.DataFrame.from_dict(delivery_data)])
 
             if current_time > graph.nodes[next_customer]['CUSTOMER_TIME_WINDOW_TO_MIN']:
                 return False
@@ -51,6 +52,10 @@ def check_time(solution, graph):
             current_time += graph.nodes[next_customer]["CUSTOMER_DELIVERY_SERVICE_TIME_MIN"] / 10
 
     return True
+
+
+"""
+"""
 
 
 def check_temps_part(x, G):
@@ -112,23 +117,38 @@ Returns
 """
 
 
-def check_delivery_capacity(graph, delivery, vehicle_capacity):
+def is_delivery_capacity_valid(graph, delivery: list, vehicle_capacity: float) -> bool:
     for customer in delivery:
-        message = 'Delivery packages capacity is heavier than vehicle capacity'
-        assert (vehicle_capacity - graph.nodes[customer]['TOTAL_WEIGHT_KG'] >= 0), message
+        if vehicle_capacity - graph.nodes[customer]['TOTAL_WEIGHT_KG'] < 0:
+            return False
+
+    return True
 
 
 """
 Check that each delivery in the given solution match capacity constraint
+
+Parameters
+----------
+----------
+
+Returns
+-------
+-------
 """
 
 
-def check_solution_capacity(solution: list, graph) -> bool:
+def is_solution_capacity_valid(solution: list, graph) -> bool:
     vehicles_capacity = graph.nodes[0]['Vehicles']['VEHICLE_TOTAL_WEIGHT_KG']
 
     for index_delivery in range(len(solution)):
         delivery = solution[index_delivery]
-        check_delivery_capacity(graph, delivery, vehicles_capacity[index_delivery])
+        flag = is_delivery_capacity_valid(graph, delivery, vehicles_capacity[index_delivery])
+
+        if not flag:
+            return False
+
+    return True
 
 
 """
@@ -147,7 +167,7 @@ Assertions.
 """
 
 
-def check_solution_shape(solution, graph):
+def is_solution_shape_valid(solution, graph):
     visited_customers = pd.DataFrame(columns=["Client", "passage"])
 
     for delivery in solution:
@@ -161,19 +181,38 @@ def check_solution_shape(solution, graph):
             else:
                 visited_customers['passage'][visited_customers['Client'] == customer] += 1
 
-    message = 'Some customers are not visited'
-    assert (len(visited_customers) == len(graph.nodes)), message
+    if len(visited_customers) != len(graph.nodes):
+        return False
 
     visite_2 = visited_customers[visited_customers['Client'] != 0]
-    message = 'Some customers are delivered more than once'
-    assert (len(visite_2[visite_2['passage'] > 1]) == 0), message
+
+    if len(visite_2[visite_2['passage'] > 1]) != 0:
+        return False
 
     for delivery in solution:
-        assert ((delivery[0], delivery[-1]) == (0, 0)), "Vehicle should start and end with depot"
-        assert (0 not in delivery[1: -1]), "Vehicle should not go back to depot in the middle of delivery"
+        if (delivery[0], delivery[-1]) != (0, 0):
+            return False
+
+        if 0 in delivery[1: -1]:
+            return False
+
+    return True
 
 
-def check_all_constraints(solution, graph):
-    check_time(solution, graph)
-    check_solution_capacity(solution, graph)
-    check_solution_shape(solution, graph)
+"""
+Check that all constraints are matched by a given solution
+
+Parameters
+----------
+----------
+
+Returns
+-------
+-------
+"""
+
+
+def is_solution_valid(solution, graph):
+    return is_solution_time_valid(solution, graph) and \
+           is_solution_capacity_valid(solution, graph) and \
+           is_solution_shape_valid(solution, graph)

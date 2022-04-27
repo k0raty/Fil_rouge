@@ -266,8 +266,8 @@ class Annealing:
         E_list = [E]
         E_min = E
         fig, axs = plt.subplots(1, 2)
-        while E0 - E >= 0.5:  # Tant que la solution retournée diffère d'un km de coût , on continue de chercher
 
+        while E0 - E >= 0.5:  # Tant que la solution retournée diffère d'un km de coût , on continue de chercher
             it += 1
             print("iteration", it, "E=", E, "Température =", temperature)
 
@@ -333,8 +333,7 @@ class Annealing:
                                 solution = copy.deepcopy(very_old_x)
 
                         else:
-                            if (check_delivery_capacity(solution[camion_ajout], Q[camion_ajout],
-                                                        graph) == False or check_temps_part(
+                            if (is_delivery_capacity_valid(solution[camion_ajout], Q[camion_ajout], graph) == False or check_temps_part(
                                     solution[camion_ajout], graph) == False):
                                 solution = copy.deepcopy(very_old_x)
                             else:
