@@ -65,11 +65,15 @@ class Qlearning:
                 list_solution = []
 
                 for index_action in range(self.NBR_OF_ACTION):
+                    if next_state == index_action:
+                        continue
+
                     solution_dict = self.state_goal_enhancement(next_state, index_action, states_visited_count,
                                                                 visited_state, current_solution,
                                                                 no_improvement, best_solution,
                                                                 best_solution_fitness, is_improving)
                     list_solution.append(solution_dict)
+                    print('is improving', is_improving)
 
                 for index_solution in range(len(list_solution)):
                     if list_solution[index_solution][1] < best_solution_fitness:
@@ -79,7 +83,7 @@ class Qlearning:
                         self.Q = list_solution[index_solution][2]
 
                 number_of_round += 1
-                self.update_epsilon(number_of_round)
+                self.epsilon = self.compute_epsilon(number_of_round)
 
         return best_solution
 
@@ -161,8 +165,9 @@ class Qlearning:
 
         return qtable
 
-    def update_epsilon(self, nbr_of_iteration):
-        self.epsilon = 1 / (1 + sqrt(nbr_of_iteration))
+    @staticmethod
+    def compute_epsilon(nbr_of_iteration):
+        return 1 / (1 + sqrt(nbr_of_iteration))
 
     @staticmethod
     def fitness_change(history):
@@ -200,7 +205,6 @@ class Qlearning:
                 best_solution_fitness = fitness_current_x
                 reward = reward + fitness_current_x
                 no_improvement = 0
-                is_improving = True
                 qtable = self.compute_qtable(state, next_state, reward)
             else:
                 no_improvement += 1
@@ -209,8 +213,10 @@ class Qlearning:
                     states_visited_count += 1
 
                 if no_improvement > self.MAX_ITER and states_visited_count == self.NBR_OF_ACTION:
+                    print('no improvement', no_improvement)
                     is_improving = False
 
             print('next state', next_state)
 
+        print('end enhancement')
         return [best_solution, best_solution_fitness, qtable, is_improving]
