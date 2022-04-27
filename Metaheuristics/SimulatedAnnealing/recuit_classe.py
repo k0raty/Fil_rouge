@@ -213,9 +213,9 @@ class Annealing:
         for delivery in solution:
             delivery.append(0)
 
-        check_time(solution, graph)
-        check_solution_capacity(solution, graph)
-        check_solution_shape(solution, graph)
+        is_solution_time_valid(solution, graph)
+        is_solution_capacity_valid(solution, graph)
+        is_solution_shape_valid(solution, graph)
 
         plotting(solution, graph)
 
@@ -251,9 +251,9 @@ class Annealing:
     """
 
     def recuit_simule(self, solution, graph, temperature, speedy):
-        check_solution_shape(solution, graph)
-        check_time(solution, graph)
-        check_solution_capacity(solution, graph)
+        is_solution_shape_valid(solution, graph)
+        is_solution_time_valid(solution, graph)
+        is_solution_capacity_valid(solution, graph)
 
         it = 0
         k = 10e-5  # arbitraire
@@ -323,7 +323,7 @@ class Annealing:
                             r = rd.random()
 
                             if r <= p and p != 1:  # Si p fait 1 , cela ralentit énormément.
-                                check_all_constraints(solution, graph)
+                                is_solution_valid(solution, graph)
                                 solution = copy.deepcopy(very_old_x)  # sinon on conserve x tel qu'il est
 
                                 ###Assertion non trop coûteuse mais efficace pour vérifier que notre solution est modifiée comme voulue###
@@ -349,7 +349,7 @@ class Annealing:
             ###Assertions de fin###
             plotting(best_x, graph)
 
-            check_all_constraints(best_x, graph)
+            is_solution_valid(best_x, graph)
 
             num_very_old_x = sum([len(i) for i in very_old_x])
             num_x = sum([len(i) for i in solution])  # On vérifie qu'aucun sommet n'a été oublié
@@ -375,7 +375,7 @@ class Annealing:
         fig.savefig("Profil de la première partie")
         fig.show()
 
-        check_all_constraints(best_x, graph)
+        is_solution_valid(best_x, graph)
 
         plotting(solution, graph)
 
@@ -426,7 +426,7 @@ class Annealing:
             d = energie(solution, graph)
             list_E.append(d)
 
-            check_time(solution, graph)
+            is_solution_time_valid(solution, graph)
 
             plotting(solution, graph)
             if speedy:
@@ -437,6 +437,6 @@ class Annealing:
         plt.title("Evolution de l'énergie lors de la seconde phase")
         plt.show()
 
-        check_all_constraints(solution, graph)
+        is_solution_valid(solution, graph)
 
         return solution

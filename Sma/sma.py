@@ -32,7 +32,7 @@ class AgentMeta(Agent):
         self.speedy = speedy
 
     def step(self):
-        self.meta.main(self.initial_solution, self.speedy)
+        self.meta.main(self.initial_solution, )
         self.solution = self.meta.solution
         self.fitness = self.meta.fitness
 

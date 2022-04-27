@@ -18,7 +18,8 @@ class Scenarios:
     ----------
     """
 
-    def no_interaction(self, nbr_of_iteration=2, speedy=True):
+    @staticmethod
+    def no_interaction(nbr_of_iteration=2, speedy=True):
         model_sma = ModelSma(nbr_of_genetic=1, nbr_of_tabou=1, nbr_of_recuit=0, speedy=True)
 
         for iteration in range(nbr_of_iteration):
@@ -39,7 +40,8 @@ class Scenarios:
     ----------
     """
 
-    def friend_interaction_best_fitness(self, nbr_of_iteration=5):
+    @staticmethod
+    def friend_interaction_best_fitness(nbr_of_iteration=5):
         model_sma = ModelSma(nbr_of_genetic=1, nbr_of_tabou=1, nbr_of_recuit=0)
 
         for iteration in range(nbr_of_iteration):
@@ -65,7 +67,8 @@ class Scenarios:
     ----------
     """
 
-    def friend_interaction_best_solutions(self, nbr_of_iteration=5):
+    @staticmethod
+    def friend_interaction_best_solutions(nbr_of_iteration=5):
         model_sma = ModelSma(nbr_of_genetic=1, nbr_of_tabou=1, nbr_of_recuit=0)
 
         for iteration in range(nbr_of_iteration):
@@ -91,7 +94,8 @@ class Scenarios:
     ----------
     """
 
-    def friend_interaction_random_solution(self, nbr_of_iteration=5):
+    @staticmethod
+    def friend_interaction_random_solution(nbr_of_iteration=5):
         model_sma = ModelSma(nbr_of_genetic=1, nbr_of_tabou=1, nbr_of_recuit=0)
 
         for iteration in range(nbr_of_iteration):
@@ -118,7 +122,8 @@ class Scenarios:
     ----------
     """
 
-    def friend_interaction_random_solutions(self, nbr_of_iteration=5):
+    @staticmethod
+    def friend_interaction_random_solutions(nbr_of_iteration=5):
         model_sma = ModelSma(nbr_of_genetic=1, nbr_of_tabou=1, nbr_of_recuit=0)
 
         solution = []
