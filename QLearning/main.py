@@ -19,6 +19,6 @@ initial_solution = genetic_algorithm.solution
 
 """ Run Q-Learning """
 qlearning = Qlearning(graph, cost_matrix, initial_solution)
-solution = qlearning.main()
+qlearning.adaptive_local_search_qlearning()
 
-print('QLearning solution : ', solution)
+print('QLearning solution : ', qlearning.solution)

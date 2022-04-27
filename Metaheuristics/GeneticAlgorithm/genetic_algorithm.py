@@ -1,10 +1,9 @@
 """ Import librairies """
-import random as rd
+import matplotlib.pyplot as plt
 from numpy import mean, argmin
 from seaborn import color_palette
 import matplotlib.lines as lines
 from copy import deepcopy
-from os.path import join
 
 
 """ Import utilities """
@@ -299,8 +298,6 @@ class GeneticAlgorithm:
     solution: list - a randomly generated solution to the problem
     -------
     """
-    # utiliser une fonction qui génère la solution du problème de voyageur de commerce
-    # puis la segmenter par véhicule, en changeant la méthode de segmentation
     def generate_solution(self, order=None):
         if order is None:
             seed = range(1, self.NBR_OF_CUSTOMER + 1)  # as depot's index is 0
@@ -433,6 +430,11 @@ class GeneticAlgorithm:
     def draw_fitness(iteration, history):
         plt.figure()
         plt.plot(range(iteration), history)
+
+        plt.xlabel('iteration')
+        plt.ylabel('Mean fitness')
+        plt.title('Evolution of the population mean fitness')
+
         fig = plt.gcf()
         plt.show()
 
