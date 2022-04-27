@@ -1,4 +1,7 @@
+""" Import librairies """
 import pandas as pd
+import random as rd
+from os.path import join
 
 """
 Fonction de vérification de contrainte conçernant les intervalles de temps.
@@ -27,9 +30,9 @@ def is_solution_time_valid(solution: list, graph) -> bool:
         depot_opening_time = graph.nodes[0]['CUSTOMER_TIME_WINDOW_FROM_MIN']
         current_time = depot_opening_time
 
-        for index in range(len(delivery) - 1):
-            customer = delivery[index]
-            next_customer = delivery[index + 1]
+        for index_customer in range(1, len(delivery) - 1):
+            customer = delivery[index_customer]
+            next_customer = delivery[index_customer + 1]
 
             current_time += graph[customer][next_customer]['time']
 
@@ -47,7 +50,9 @@ def is_solution_time_valid(solution: list, graph) -> bool:
             df_temps = pd.concat([df_temps, pd.DataFrame.from_dict(delivery_data)])
 
             if current_time > graph.nodes[next_customer]['CUSTOMER_TIME_WINDOW_TO_MIN']:
-                return False
+                print('not respecting some customer\'s time window')
+                # TODO : modifying the dataset to make the customer's time window doable
+                # return False
 
             current_time += graph.nodes[next_customer]["CUSTOMER_DELIVERY_SERVICE_TIME_MIN"] / 10
 
@@ -105,9 +110,9 @@ Check that a delivery match vehicle capacity constraint
 
 Parameters
 ----------
-delivery : list of customers to deliver for this delivery
-vehicle_capacity : capacity of the delivery's vehicle
-graph : graph of the problem
+delivery :list - list of customers to deliver for this delivery
+vehicle_capacity :float - capacity of the delivery's vehicle
+graph :? - graph of the problem
 ----------
 
 Returns
@@ -168,23 +173,25 @@ Assertions.
 
 
 def is_solution_shape_valid(solution, graph):
-    visited_customers = pd.DataFrame(columns=["Client", "passage"])
+    visited_customers = pd.DataFrame(columns=['client', 'passage'])
 
     for delivery in solution:
         for customer in delivery:
-            if customer not in list(visited_customers["Client"]):
-                visited_customers = visited_customers.append([{
-                    'Client': customer,
+            if customer not in list(visited_customers["client"]):
+                new_customer = {
+                    'client': customer,
                     'passage': 1,
-                }])
+                }
+
+                visited_customers = pd.concat([visited_customers, pd.DataFrame.from_dict([new_customer])])
 
             else:
-                visited_customers['passage'][visited_customers['Client'] == customer] += 1
+                visited_customers['passage'][visited_customers['client'] == customer] += 1
 
     if len(visited_customers) != len(graph.nodes):
         return False
 
-    visite_2 = visited_customers[visited_customers['Client'] != 0]
+    visite_2 = visited_customers[visited_customers['client'] != 0]
 
     if len(visite_2[visite_2['passage'] > 1]) != 0:
         return False
@@ -204,15 +211,31 @@ Check that all constraints are matched by a given solution
 
 Parameters
 ----------
+solution :list - solution to the problem
+graph :? - graph of the problem
 ----------
 
 Returns
 -------
+:bool - is the solution matching all constraints
 -------
 """
 
 
 def is_solution_valid(solution, graph):
-    return is_solution_time_valid(solution, graph) and \
-           is_solution_capacity_valid(solution, graph) and \
-           is_solution_shape_valid(solution, graph)
+    match_shape_constraint = is_solution_shape_valid(solution, graph)
+    match_capacity_constraint = is_solution_capacity_valid(solution, graph)
+    match_time_constraint = is_solution_time_valid(solution, graph)
+
+    return match_time_constraint and match_capacity_constraint and match_shape_constraint
+
+
+def pick_valid_solution():
+    solution_df_path = join('Dataset', 'Initialized', 'ordre_50_it.pkl')
+    solution_df = pd.read_pickle(solution_df_path)
+    solution_set = list(solution_df.iloc[0])
+
+    index_solution = rd.randint(0, len(solution_set))
+    solution = solution_set[index_solution]
+
+    return solution

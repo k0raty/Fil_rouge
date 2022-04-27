@@ -35,25 +35,34 @@ def intra_route_swap(solution):
 
     return solution
 
-def InterRouteSwap(solution):
-    """ Echange de deux clients de routes différentes de façon aléatoire """
 
-    # On récupère deux routes au hasard
-    nb_road1 = rd.randrange(0,len(solution),1)
-    road1 = solution[nb_road1]
-    nb_road2 = rd.randrange(0,len(solution),1)
-    while nb_road1 == nb_road2 :
-        nb_road2 = rd.randrange(0,len(solution),1)
-    road2 = solution[nb_road2]
+"""
+Echange de deux clients de routes différentes de façon aléatoire
+"""
 
-    # On récupère deux clients différents au hasard
-    nb_client1 = rd.randrange(1,len(road1)-1,1)  # on ne prend pas en compte les dépôts !
-    nb_client2 = rd.randrange(1,len(road2)-1,1)
+
+def inter_route_swap(solution):
+    if len(solution) <= 1:
+        return solution
+
+    index_delivery_1 = rd.randint(0, len(solution) - 1)
+    delivery_1 = solution[index_delivery_1]
+
+    index_delivery_2 = rd.randint(0, len(solution) - 1)
+
+    while index_delivery_1 == index_delivery_2:
+        index_delivery_2 = rd.randint(0, len(solution) - 1)
+
+    delivery_2 = solution[index_delivery_2]
+
+    index_customer_1 = rd.randint(1, len(delivery_1) - 2)
+    index_customer_2 = rd.randint(1, len(delivery_2) - 2)
     
-    # On procède à l'échange des clients
-    aux = solution[nb_road1][nb_client1]
-    solution[nb_road1][nb_client1] = solution[nb_road2][nb_client2]
-    solution[nb_road2][nb_client2] = aux
+    customer_1 = solution[index_delivery_1][index_customer_1]
+    customer_2 = solution[index_delivery_2][index_customer_2]
+
+    solution[index_delivery_1][index_customer_1] = customer_2
+    solution[index_delivery_2][index_customer_2] = customer_1
 
     return solution
 
@@ -261,7 +270,7 @@ def perform_action(index_action, solution):
         return intra_route_swap(solution)
 
     elif index_action == 1:
-        return InterRouteSwap(solution)
+        return inter_route_swap(solution)
 
     elif index_action == 2:
         return IntraRouteShift(solution)

@@ -21,7 +21,6 @@ Concernant la solution retournée :
 
 """ Import librairies """
 import copy
-import random as rd
 import math
 import warnings
 
@@ -29,7 +28,7 @@ import warnings
 from Utility.database import Database
 from Utility.common import *
 from Utility.validator import *
-from Metaheuristics.SimulatedAnnealing.simulated_annealing_initialization import main
+from Metaheuristics.SimulatedAnnealing.simulated_annealing_initialization import generate_order
 
 set_root_dir()
 
@@ -50,7 +49,6 @@ class Annealing:
         self.graph = graph
 
         self.NBR_OF_CUSTOMER = len(graph) - 1
-        self.NBR_OF_VEHICLE = len(graph.nodes[0]['Vehicles'])
         self.T = initial_temperature
         self.speed = vehicle_speed
 
@@ -82,7 +80,7 @@ class Annealing:
         print("Initialisation de la solution \n")
 
         if initial_solution is None:
-            solution = self.init(self.graph)
+            solution = self.generate_initial_solution()
 
         else:
             solution = initial_solution
@@ -119,31 +117,31 @@ class Annealing:
     -------
     """
 
-    def init(self, graph, initial_order=None):
-        total_vehicles_capacity = sum(graph.nodes[0]['Vehicles']["VEHICLE_TOTAL_WEIGHT_KG"].values())
-        total_customers_capacity = sum([graph.nodes[i]['TOTAL_WEIGHT_KG'] for i in range(len(graph.nodes))])
+    def generate_initial_solution(self, initial_order=None):
+        total_vehicles_capacity = sum(self.graph.nodes[0]['Vehicles']["VEHICLE_TOTAL_WEIGHT_KG"].values())
+        total_customers_capacity = sum([self.graph.nodes[i]['TOTAL_WEIGHT_KG'] for i in range(len(self.graph.nodes))])
 
-        max_vehicle_capacity = max(graph.nodes[0]['Vehicles']["VEHICLE_TOTAL_WEIGHT_KG"].values())
-        max_customer_capacity = max([graph.nodes[i]['TOTAL_WEIGHT_KG'] for i in range(len(graph.nodes))])
+        max_vehicle_capacity = max(self.graph.nodes[0]['Vehicles']["VEHICLE_TOTAL_WEIGHT_KG"].values())
+        max_customer_capacity = max([self.graph.nodes[i]['TOTAL_WEIGHT_KG'] for i in range(len(self.graph.nodes))])
 
         message = 'Some customers have packages heavier than vehicles capacity'
         assert (max_customer_capacity < max_vehicle_capacity), message
 
         message = 'There is not enough vehicles to achieve the deliveries in time, regardless the configuration'
-        assert (self.NBR_OF_VEHICLE > graph.nodes[0]['n_min']), message
+        assert (self.graph.nodes[0]['NBR_OF_VEHICLE'] > self.graph.nodes[0]['n_min']), message
 
         solution = []  # Notre première solution
 
-        for index_delivery in range(self.NBR_OF_VEHICLE):
+        for index_delivery in range(self.graph.nodes[0]['NBR_OF_VEHICLE']):
             solution.append([0])
 
-        customers = [node for node in graph.nodes]
+        customers = [node for node in self.graph.nodes]
         customers.pop(0)
-
+        print('step 1')
         # Initialisation du dataframe renseignant sur les sommets et leurs contraintes
         if initial_order is None:
-            initial_order = main(graph)
-
+            initial_order = generate_order(self.graph)
+        print('step 2')
         message = 'The initial order should start with 0 (the depot)'
         assert (initial_order[0] == 0), message
 
@@ -152,10 +150,9 @@ class Annealing:
 
         # On remplit la solution de la majorité des sommets
         df_camion = pd.DataFrame()  # Dataframe renseignant sur les routes, important pour la seconde phase de  remplissage
-        df_camion.index = range(self.NBR_OF_VEHICLE)
-
-        vehicles_capacity = graph.nodes[0]['Vehicles']["VEHICLE_TOTAL_WEIGHT_KG"]
-        ressources = [vehicles_capacity[i] for i in range(self.NBR_OF_VEHICLE)]
+        df_camion.index = range(self.graph.nodes[0]['NBR_OF_VEHICLE'])
+        vehicles_capacity = self.graph.nodes[0]['Vehicles']["VEHICLE_TOTAL_WEIGHT_KG"]
+        ressources = [vehicles_capacity[i] for i in range(self.graph.nodes[0]['NBR_OF_VEHICLE'])]
 
         df_camion['Ressources'] = ressources
         columns = [
@@ -173,21 +170,21 @@ class Annealing:
         with tqdm(total=len(initial_order)) as pbar:
             while i < len(initial_order):
                 message = 'Not enough vehicles'
-                assert (camion < self.NBR_OF_VEHICLE), message
+                assert (camion < self.graph.nodes[0]['NBR_OF_VEHICLE']), message
 
                 nodes_to_add = initial_order[i]
                 message = 'Given delivery goes back to depot'
                 assert (nodes_to_add != 0), message
 
-                q_nodes = graph.nodes[nodes_to_add]['TOTAL_WEIGHT_KG']
-                int_min = graph.nodes[nodes_to_add]["CUSTOMER_TIME_WINDOW_FROM_MIN"]
-                int_max = graph.nodes[nodes_to_add]["CUSTOMER_TIME_WINDOW_TO_MIN"]
+                q_nodes = self.graph.nodes[nodes_to_add]['TOTAL_WEIGHT_KG']
+                int_min = self.graph.nodes[nodes_to_add]["CUSTOMER_TIME_WINDOW_FROM_MIN"]
+                int_max = self.graph.nodes[nodes_to_add]["CUSTOMER_TIME_WINDOW_TO_MIN"]
 
                 temp = copy.deepcopy(solution[camion])
                 temp.append(nodes_to_add)
 
-                if df_camion.loc[camion]['Ressources'] >= q_nodes and check_temps_part(temp, graph):
-                    Q = graph.nodes[0]['Vehicles']['VEHICLE_TOTAL_WEIGHT_KG'][camion]
+                if df_camion.loc[camion]['Ressources'] >= q_nodes and check_temps_part(temp, self.graph):
+                    Q = self.graph.nodes[0]['Vehicles']['VEHICLE_TOTAL_WEIGHT_KG'][camion]
                     message = 'Some customers have packages heavier than vehicles capacity'
                     assert (q_nodes <= Q), message
 
@@ -213,11 +210,11 @@ class Annealing:
         for delivery in solution:
             delivery.append(0)
 
-        is_solution_time_valid(solution, graph)
-        is_solution_capacity_valid(solution, graph)
-        is_solution_shape_valid(solution, graph)
+        is_solution_time_valid(solution, self.graph)
+        is_solution_capacity_valid(solution, self.graph)
+        is_solution_shape_valid(solution, self.graph)
 
-        plotting(solution, graph)
+        plotting(solution, self.graph)
 
         return solution
 
@@ -397,7 +394,8 @@ class Annealing:
     -------
     """
 
-    def perturbation_intra(self, solution, graph, speedy):
+    @staticmethod
+    def perturbation_intra(solution, graph, speedy):
         d = energie(solution, graph)
         d0 = d + 1
         iteration = 1

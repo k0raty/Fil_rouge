@@ -1,6 +1,7 @@
 """ Import librairies """
 from copy import deepcopy
 import random as rd
+from os.path import join
 
 """ Import utilities """
 from Utility.database import Database
@@ -61,7 +62,15 @@ class Tabou:
 
     def main(self, initial_solution=None, speedy=False):
         if initial_solution is None:
+            iteration = 0
             initial_solution = self.initialisation()
+
+            while not is_solution_valid(initial_solution, self.Graph) and iteration < 5:
+                initial_solution = self.initialisation()
+                iteration += 1
+
+            if iteration == 5:
+                initial_solution = pick_valid_solution()
 
         solution, fitness = self.find_best_neighbor(initial_solution)
 
@@ -98,6 +107,8 @@ class Tabou:
             is_fitness_better = neighbor_fitness < fitness
             is_neighbor_valid = is_solution_valid(neighbor, self.Graph)
             is_couple_new = inversion_couple not in self.tabou_list
+
+            print('neighbor valid', is_neighbor_valid)
 
             if is_fitness_better and is_neighbor_valid and is_couple_new:
                 solution = neighbor
@@ -169,7 +180,13 @@ class Tabou:
 
         current_time = 481
 
-        for index_customer in range(1, len(self.Graph)):
+        seed = [index for index in range(1, len(self.Graph))]
+
+        while len(seed) > 0:
+            index_customer = rd.sample(seed, 1)[0]
+            index_value = seed.index(index_customer)
+            seed.pop(index_value)
+
             customer = self.Graph.nodes[index_customer]
 
             if customer['INDEX'] in delivered_customers:

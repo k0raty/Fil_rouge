@@ -205,7 +205,7 @@ def create_graph(df_customers, df_vehicles, vehicle_speed=50):
     graph.nodes[0].update(depot_dict)
 
     graph.nodes[0]['VEHICLE_SPEED'] = vehicle_speed
-    graph.nodes[0]['n_max'] = nbr_of_vehicle
+    graph.nodes[0]['NBR_OF_VEHICLE'] = nbr_of_vehicle
 
     dict_vehicles = df_vehicles.to_dict()
 
@@ -237,45 +237,6 @@ def create_graph(df_customers, df_vehicles, vehicle_speed=50):
     graph.nodes[0]['n_min'] = n_min
 
     return graph
-
-
-# A ADAPTER DANS LA CLASSE MAIS JE PENSE QU'IL EST DANS validator
-def check_temps_part(x, G):
-    """
-    Fonction de vérification de contrainte conçernant les intervalles de temps.
-        -Chaque camion part au même moment, cependant leurs temps de trajets sont pris en compte
-        seulement lorsque celui-ci est arrivé chez le premier client.
-    Parameters
-    ----------
-    x : Trajectoire de camion à évaluer
-    G : Graphe du problème
-    Returns
-    -------
-    bool
-        Si oui ou non, les intervalles de temps sont bien respectés dans le routage crée pour le camion en question .
-        Le camion peut marquer des pauses.
-    """
-
-    df_temps = pd.DataFrame(columns=['temps', 'route', 'temps_de_parcours', 'limite_inf', 'limite_sup'])
-    temps = G.nodes[0]['CUSTOMER_TIME_WINDOW_FROM_MIN']  # Temps d'ouverture du dépot
-    for i in range(1, len(x) - 1):
-        first_node = x[i]
-        second_node = x[i + 1]
-        if second_node != 0:  # On ne prend pas en compte l'arrivée non plus
-            temps += G[first_node][second_node]['time']  # temps mis pour parcourir la route en minute
-            while temps < G.nodes[second_node]['CUSTOMER_TIME_WINDOW_FROM_MIN']:
-                temps += 1  # Le camion est en pause
-            dict = {'temps': temps, 'route': (first_node, second_node),
-                    'temps_de_parcours': G[first_node][second_node]['time'],
-                    'limite_inf': G.nodes[second_node]['CUSTOMER_TIME_WINDOW_FROM_MIN'],
-                    'limite_sup': G.nodes[second_node]['CUSTOMER_TIME_WINDOW_TO_MIN']}
-            df_temps = df_temps.append([dict])
-            if (temps < G.nodes[second_node]['CUSTOMER_TIME_WINDOW_FROM_MIN'] or temps > G.nodes[second_node][
-                'CUSTOMER_TIME_WINDOW_TO_MIN']):
-                return False
-
-            temps += G.nodes[second_node]["CUSTOMER_DELIVERY_SERVICE_TIME_MIN"] / 10
-    return True
 
 
 # A ADAPTER DANS LA CLASSE
@@ -399,7 +360,7 @@ def perturbation_intra(x, G):
                             x[camion] = route2
         d = energie(x, G)
         list_E.append(d)
-        assert (check_time(x, G) == True)
+        assert (is_solution_time_valid(x, G))
         plotting(x, G)
     plt.clf()
     plt.plot(list_E, 'o-')
@@ -408,6 +369,6 @@ def perturbation_intra(x, G):
 
     ###Assertions de fin###
 
-    check_forme(x, G)
-    assert (check_constraint(x, G) == True), "Mauvaise initialisation au niveau du temps"
+    assert (is_solution_shape_valid(x, G))
+    assert (is_solution_valid(x, G)), "Mauvaise initialisation au niveau du temps"
     return x

@@ -181,8 +181,6 @@ class Qlearning:
         reward = 0
         qtable = deepcopy(self.Q)
 
-        print('state_goal', state_goal)
-
         while next_state != state_goal:
             if no_improvement == 0:
                 state = next_state

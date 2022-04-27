@@ -11,7 +11,7 @@ set_root_dir()
 class Database:
     Graph = []
 
-    def __init__(self, vehicle_speed=20):
+    def __init__(self, vehicle_speed=50):
         customer_path = join('Dataset', 'Tables', 'table_2_customers_features.csv')
         vehicles_path = join('Dataset', 'Tables', 'table_3_cars_features.csv')
 
