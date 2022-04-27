@@ -70,7 +70,7 @@ class Annealing:
     -------
     """
 
-    def main(self, initial_solution=None, speedy=True):
+    def main(self, initial_solution=None, speedy=False):
         ordre_init_path = os.path.join('Metaheuristics', 'SimulatedAnnealing', 'df_ordre_init.pkl')
         df = pd.read_pickle(ordre_init_path)
 
@@ -320,28 +320,28 @@ class Annealing:
                             r = rd.random()
 
                             if r <= p and p != 1:  # Si p fait 1 , cela ralentit énormément.
-                                is_solution_valid(solution, graph)
-                                solution = copy.deepcopy(very_old_x)  # sinon on conserve x tel qu'il est
-
-                                ###Assertion non trop coûteuse mais efficace pour vérifier que notre solution est modifiée comme voulue###
-                                assert (len(solution[camion_ajout]) == len(very_old_x[camion_ajout]) + 1)
-                                assert (len(solution[camion_retire]) == len(very_old_x[camion_retire]) - 1)
-                            else:
+                                if not is_solution_valid(solution, graph) :
+                                    solution = copy.deepcopy(very_old_x)  # sinon on conserve x tel qu'il est
+                                #else :
+                                    ###Assertion non trop coûteuse mais efficace pour vérifier que notre solution est modifiée comme voulue###
+                                   # assert (len(solution[camion_ajout]) == len(very_old_x[camion_ajout]) + 1)
+                                   # assert (len(solution[camion_retire]) == len(very_old_x[camion_retire]) - 1)
+                            else :
                                 solution = copy.deepcopy(very_old_x)
 
                         else:
-                            if (is_delivery_capacity_valid(solution[camion_ajout], Q[camion_ajout], graph) == False or check_temps_part(
-                                    solution[camion_ajout], graph) == False):
-                                solution = copy.deepcopy(very_old_x)
-                            else:
-                                E = energie(solution, graph)
-                                if E < E_min:
-                                    ###Assertion non trop coûteuse mais efficace pour vérifier que notre solution est modifiée comme voulue###
-                                    assert (len(solution[camion_ajout]) == len(very_old_x[camion_ajout]) + 1)
-                                    assert (len(solution[camion_retire]) == len(very_old_x[camion_retire]) - 1)
-                                    best_x = copy.deepcopy(
-                                        solution)  # On garde en mémoire le meilleur x trouvé jusqu'à présent
-                                    E_min = E
+                            #if (is_delivery_capacity_valid(graph, solution[camion_ajout], Q[camion_ajout]) == False or check_temps_part(
+                                    #solution[camion_ajout], graph) == False):
+                               #solution = copy.deepcopy(very_old_x)
+                            #else:
+                            E = energie(solution, graph)
+                            if E < E_min:
+                                ###Assertion non trop coûteuse mais efficace pour vérifier que notre solution est modifiée comme voulue###
+                                #assert (len(solution[camion_ajout]) == len(very_old_x[camion_ajout]) + 1)
+                                #assert (len(solution[camion_retire]) == len(very_old_x[camion_retire]) - 1)
+                                best_x = copy.deepcopy(
+                                    solution)  # On garde en mémoire le meilleur x trouvé jusqu'à présent
+                                E_min = E
 
             ###Assertions de fin###
             plotting(best_x, graph)
@@ -418,8 +418,8 @@ class Annealing:
                         t = energie_part(route2, graph, camion)
 
                         if (t < d_part):
-                            if check_temps_part(route2, graph) == True:
-                                solution[camion] = route2
+                            #if check_temps_part(route2, graph) == True:
+                            solution[camion] = route2
 
             d = energie(solution, graph)
             list_E.append(d)

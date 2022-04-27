@@ -122,7 +122,7 @@ class GeneticAlgorithm:
             print('Iteration {}, fitness {}'.format(iteration, fitness_list[index_min]))
 
         self.fitness = compute_fitness(self.solution, self.COST_MATRIX, self.Graph)
-        # self.draw_fitness(iteration, fitness_history, path)
+        self.draw_fitness(iteration, fitness_history)
 
     """
     Use a stochastic method ("Technique de la roulette") to select individuals from the current generation
@@ -429,13 +429,11 @@ class GeneticAlgorithm:
     """
 
     @staticmethod
-    def draw_fitness(iteration, history, filepath):
+    def draw_fitness(iteration, history):
         plt.figure()
         plt.plot(range(iteration), history)
         fig = plt.gcf()
         plt.show()
-        filepath = os.path.join(filepath, 'img_{}.png'.format(iteration + 1))
-        fig.savefig(filepath, format='png')
 
     """
     Check that the fitness value is still changing, if no then the return will stop the algorithm in the main function
