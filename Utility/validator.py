@@ -231,7 +231,7 @@ def is_solution_valid(solution, graph):
 
 
 def pick_valid_solution():
-    solution_df_path = join('Dataset', 'Initialized', 'ordre_50_it.pkl')
+    solution_df_path = join('Dataset', 'Initialized', 'valid_initial_solution.pkl')
     solution_df = pd.read_pickle(solution_df_path)
     solution_set = list(solution_df.iloc[0])
 

@@ -19,5 +19,5 @@ def test_pkl_solutions():
 def test_annealing_init():
     annealing = Annealing()
     solution = annealing.generate_initial_solution()
-    flag = is_solution_valid(solution, annealing.graph)
+    flag = is_solution_valid(solution, annealing.Graph)
     print('solution valid ? ', flag)

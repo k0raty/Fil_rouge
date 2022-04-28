@@ -1,12 +1,12 @@
 """ Import librairies """
-from copy import deepcopy
 import random as rd
-from os.path import join
+from copy import deepcopy
 
 """ Import utilities """
+from Utility.common import generate_initial_solution, set_root_dir, compute_fitness
+from Utility.validator import is_solution_valid, pick_valid_solution
+from Utility.plotter import plot_solution
 from Utility.database import Database
-from Utility.common import *
-from Utility.validator import *
 
 set_root_dir()
 
@@ -33,13 +33,11 @@ class Tabou:
     ----------
     """
 
-    def __init__(self, cost_matrix=None, graph=None, vehicle_speed=40):
+    def __init__(self, graph=None, vehicle_speed=40):
         if graph is None:
             database = Database(vehicle_speed)
             graph = database.Graph
-            cost_matrix = compute_cost_matrix(graph)
 
-        self.COST_MATRIX = cost_matrix
         self.Graph = graph
 
         self.NBR_OF_CUSTOMER = len(graph) - 1
@@ -72,6 +70,8 @@ class Tabou:
             if iteration == 5:
                 initial_solution = pick_valid_solution()
 
+        plot_solution(initial_solution, self.Graph, title='Initial solution to the VRP')
+
         solution, fitness = self.find_best_neighbor(initial_solution)
 
         for iteration in range(self.MAX_ITERATION):
@@ -81,6 +81,8 @@ class Tabou:
 
         self.solution = solution
         self.fitness = fitness
+
+        plot_solution(self.solution, self.Graph)
 
     """
     Find the best solution in the close neighborhood of the given solution
@@ -98,11 +100,11 @@ class Tabou:
 
     def find_best_neighbor(self, initial_solution: list):
         solution = initial_solution
-        fitness = compute_fitness(initial_solution, self.COST_MATRIX, self.Graph)
+        fitness = compute_fitness(initial_solution, self.Graph)
 
         for iteration in range(self.MAX_NEIGHBORS):
             neighbor, inversion_couple = self.find_neighbor(initial_solution)
-            neighbor_fitness = compute_fitness(neighbor, self.COST_MATRIX, self.Graph)
+            neighbor_fitness = compute_fitness(neighbor, self.Graph)
 
             is_fitness_better = neighbor_fitness < fitness
             is_neighbor_valid = is_solution_valid(neighbor, self.Graph)
@@ -159,80 +161,7 @@ class Tabou:
         return neighbor, inversion_couple
 
     """
-    Generate a delivery for a portion of the solution, accordingly to the time and weigh constraints
-
-    Parameters
-    ----------
-    delivered_customers: list - the list of the customers indexes who have been delivered so far in the solution
-    -------
-    
-    Returns
-    -------
-    delivered_customers: list - the list of the customers indexes who have been delivered so far in the solution
-    delivery: list - a portion of the solution
-    """
-
-    def generate_delivery(self, delivered_customers):
-        weight = 0
-        delivery = [0]
-
-        current_time = 481
-
-        seed = [index for index in range(1, len(self.Graph))]
-
-        while len(seed) > 0:
-            index_customer = rd.sample(seed, 1)[0]
-            index_value = seed.index(index_customer)
-            seed.pop(index_value)
-
-            customer = self.Graph.nodes[index_customer]
-
-            if customer['INDEX'] in delivered_customers:
-                continue
-
-            if weight + customer['TOTAL_WEIGHT_KG'] > self.VEHICLE_CAPACITY:
-                continue
-
-            potential_current_time = current_time
-
-            if len(delivery) > 1:
-                previous_customer = self.Graph.nodes[delivery[-1]]
-
-                dist = compute_spherical_distance(
-                    previous_customer['CUSTOMER_LATITUDE'],
-                    previous_customer['CUSTOMER_LONGITUDE'],
-                    customer['CUSTOMER_LATITUDE'],
-                    customer['CUSTOMER_LONGITUDE'],
-                )
-
-                time_to_new_customer = dist / self.Graph.nodes[0]['VEHICLE_SPEED'] / 60
-
-                potential_current_time += time_to_new_customer
-
-            if customer['CUSTOMER_TIME_WINDOW_FROM_MIN'] > potential_current_time \
-                    or potential_current_time > customer['CUSTOMER_TIME_WINDOW_TO_MIN']:
-                print('customer out of time', customer)
-                continue
-
-            current_time = potential_current_time
-            weight += customer['TOTAL_WEIGHT_KG']
-            delivery.append(customer['INDEX'])
-            delivered_customers.append(customer['INDEX'])
-
-            if weight >= self.VEHICLE_CAPACITY:
-                break
-
-        delivery.append(0)
-
-        return delivered_customers, delivery
-
-    """
     Generate an initial valid solution taking into account the time and weigh constraints 
-    
-    Parameters
-    -------
-    
-    -------
     
     Returns
     -------
@@ -241,14 +170,6 @@ class Tabou:
     """
 
     def initialisation(self):
-        solution = []
-        delivered_customers = []
-
-        while len(delivered_customers) < self.NBR_OF_CUSTOMER:
-            delivered_customers, delivery = self.generate_delivery(delivered_customers)
-            solution.append(delivery)
-
-            # post-processing to remove duplicated customers
-            delivered_customers = list(set(delivered_customers))
+        solution = generate_initial_solution(self.Graph)
 
         return solution

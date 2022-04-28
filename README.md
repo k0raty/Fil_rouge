@@ -1,10 +1,54 @@
-# Fil rouge pour l'électif ICO
+# Vehicle Routing Problem (VRP)
 
-Last modification on the 31th of March 2022
+> *Updated on the 28th of April 2022*
 
-By Flavien, Alexandre, Antony, Floriane, Hugo, Julien
+This project was started on the 1st of March 2022 by students of the Ecole Centrale de Lille, in France.
 
-## 1. Structure of the project
+It aims to optimize the resolution of the VRP, using different algorithms and finding their best parameters.
+
+It is a school project for the class "Intelligence Collaborative (ICO)", therefore it is not intended to be used in 
+production.
+
+## Getting started
+
+A quick introduction to how to set up the project.
+
+```
+switch your python interpreter to pipenv
+
+git pull
+git checkout main (for the production branch)
+git checkout develop (for the development branch)
+git checkout [branch name] (for any feature branch)
+```
+
+Then to run the different algorithms.
+
+```
+Go to an algorithm file
+Run it in your IDE console
+Create an instance of an algorithm class
+Call its main method
+Access any of its properties to dig into it
+
+Example :
+ga = GeneticAlgorithm()
+ga.main()
+print(ga.solution)
+```
+
+## Features
+
+What can you do with this project ?
+
+- use different metaheuristics algorithms to solve the VRP :
+  - tabou
+  - simulated annealing
+  - genetic
+- use a multi-agent system to combine the metaheuristics
+- use Q-Learning to improve the parameters of the SMA and the metaheuristics
+
+## Architecture
 
 ### 1.1. Dataset
 
@@ -39,10 +83,36 @@ It contains all classes and functions used through the whole project.
 - **pool.py** : manage the pool of solution used in the SMA
 - **plotter.py** : manage the plotting of graph and chart, to display the solutions
 
-## 2. Metaheuristics
+## Useful links
 
-### 2.1. Tabou algorithm
+- Project homepage : https://github.com/k0raty/Fil_rouge
+- Repository : https://github.com/k0raty/Fil_rouge
+- Issue tracker : https://github.com/k0raty/Fil_rouge/issues
 
-### 2.2. Simulated annealing
 
-### 2.3. Genetic algorithm
+- Git documentation : https://git-scm.com/docs/git
+- PyCharm documentation : https://www.jetbrains.com/help/pycharm/quick-start-guide.html#code-assistance
+
+## Contributing
+
+If you want to contribute, feel free to create your own branch :
+
+``git branch [your branch name]``
+
+Once you finished your work, you can check the modified files :
+
+``git status``
+
+And then you can add them to a commit :
+
+``git add [file name]``
+
+After that you can create the commit :
+
+``git commit``
+
+Finally, you can push on your remote branch :
+
+``git push``
+
+> *By Florianne, Alexandre, Anthony, Flavian, Hugo, Julien*

@@ -1,15 +1,15 @@
 """ Import librairies """
-import matplotlib.pyplot as plt
 from numpy import mean, argmin
-from seaborn import color_palette
-import matplotlib.lines as lines
+import matplotlib.pyplot as plt
+import pandas as pd
+import random as rd
 from copy import deepcopy
-
+from os.path import join
 
 """ Import utilities """
 from Utility.database import Database
-from Utility.common import *
-
+from Utility.common import compute_fitness, set_root_dir
+from Utility.plotter import plot_solution
 
 set_root_dir()
 
@@ -36,13 +36,11 @@ class GeneticAlgorithm:
     ----------
     """
 
-    def __init__(self, cost_matrix=None, graph=None, vehicle_speed=40):
+    def __init__(self, graph=None, vehicle_speed=40):
         if graph is None:
             database = Database(vehicle_speed)
             graph = database.Graph
-            cost_matrix = compute_cost_matrix(graph)
 
-        self.COST_MATRIX = cost_matrix
         self.Graph = graph
 
         self.NBR_OF_CUSTOMER = len(graph) - 1  # the depot is not a customer
@@ -60,16 +58,18 @@ class GeneticAlgorithm:
     """
 
     def main(self, initial_solution=None, speedy=True):
-        initial_solution_set_path = join('Dataset', 'Initialized', 'ordre_50_it.pkl')
-        initial_solution_set = pd.read_pickle(initial_solution_set_path)
+        initial_solution_path = join('Dataset', 'Initialized', 'valid_initial_solution.pkl')
+        initial_solution_df = pd.read_pickle(initial_solution_path)
 
-        iteration = 0
-        population = list(initial_solution_set.iloc[0])
+        initial_solution_set = list(initial_solution_df.iloc[0])
+        population = rd.choices(initial_solution_set, k=self.POPULATION_SIZE)
+
         fitness_history = []
+        iteration = 0
 
         while iteration < self.MAX_ITERATION and self.fitness_change(fitness_history):
             iteration += 1
-
+            print('iteration', iteration)
             """ Choose the individuals that survive from the previous generation """
             population_survivors = self.stochastic_selection(population)  # other methods available
             population = population_survivors
@@ -83,9 +83,11 @@ class GeneticAlgorithm:
                 mother = population[index + 1]
 
                 if rd.random() < self.PROBA_CROSSING:
-                    children = self.pmx_cross_over(father, mother)  # other methods available
-                    population_crossed.append(children[0])
-                    population_crossed.append(children[1])
+                    brother = self.pmx_cross_over(father, mother)  # other methods available
+                    sister = self.pmx_cross_over(father, mother)
+
+                    population_crossed.append(brother)
+                    population_crossed.append(sister)
 
                 else:
                     population_crossed.append(father)
@@ -110,7 +112,7 @@ class GeneticAlgorithm:
             fitness_list = []
 
             for individual in population:
-                fitness_list.append(compute_fitness(individual, self.COST_MATRIX, self.Graph))
+                fitness_list.append(compute_fitness(individual, self.Graph))
 
             fitness_mean = mean(fitness_list)
             fitness_history.append(fitness_mean)
@@ -121,8 +123,8 @@ class GeneticAlgorithm:
             message = 'Iteration {}, best fitness {}, mean fitness {}'
             print(message.format(iteration, fitness_list[index_min], fitness_mean))
 
-        self.fitness = compute_fitness(self.solution, self.COST_MATRIX, self.Graph)
-        self.draw_fitness(iteration, fitness_history)
+        self.fitness = compute_fitness(self.solution, self.Graph)
+        plot_solution(self.solution, self.Graph)
 
     """
     Use a stochastic method ("Technique de la roulette") to select individuals from the current generation
@@ -144,7 +146,7 @@ class GeneticAlgorithm:
 
         while len(population_survivors) != self.POPULATION_SIZE:
             contestants = rd.choices(population, k=self.TOURNAMENT_SIZE)
-            contestants = sorted(contestants, key=lambda x: compute_fitness(x, self.COST_MATRIX, self.Graph))
+            contestants = sorted(contestants, key=lambda x: compute_fitness(x, self.Graph))
             winner = contestants[0]
             population_survivors.append(winner)
 
@@ -169,7 +171,7 @@ class GeneticAlgorithm:
     """
 
     def determinist_selection(self, population: list) -> list:
-        population_survivors = sorted(population, key=lambda x: compute_fitness(x, self.COST_MATRIX, self.Graph))
+        population_survivors = sorted(population, key=lambda x: compute_fitness(x, self.Graph))
         population_survivors = population_survivors[:self.POPULATION_SIZE - self.TOURNAMENT_SIZE]
         population_survivors = rd.choices(population_survivors, k=self.POPULATION_SIZE)
 
@@ -192,31 +194,35 @@ class GeneticAlgorithm:
     """
 
     def pmx_cross_over(self, father, mother):
-        father_customers = []
-        mother_customers = []
+        point = rd.randint(0, len(father))
 
-        for delivery in father:
-            father_customers += [summit for summit in delivery if summit != 0]
+        embryo = [father[point], mother[point]]
+        children = []
 
-        for delivery in mother:
-            mother_customers += [summit for summit in delivery if summit != 0]
+        customers_visited = []
+        customers_not_visited = [index for index in range(1, len(self.Graph))]
 
-        point = rd.randint(0, self.NBR_OF_VEHICLE)
+        for index_delivery in range(len(father)):
+            delivery = embryo[index_delivery]
+            children.append([0])
 
-        brother_order = father_customers[:point]
-        sister_order = mother_customers[:point]
+            for index_customer in range(1, len(delivery) - 1):
+                customer = delivery[index_customer]
 
-        for index_customer in range(self.NBR_OF_CUSTOMER):
-            if mother_customers[index_customer] not in brother_order:
-                brother_order.append(mother_customers[index_customer])
+                if customer in customers_visited:
+                    if len(customers_not_visited) > 0:
+                        random_index = rd.randint(0, len(customers_not_visited) - 1)
+                        new_customer = customers_not_visited.pop(random_index)
+                        customers_visited.append(new_customer)
+                        children[-1].append(new_customer)
+                else:
+                    customers_visited.append(customer)
+                    customers_not_visited.pop(customers_not_visited.index(customer))
+                    children[-1].append(customer)
 
-            if father_customers[index_customer] not in sister_order:
-                sister_order.append(father_customers[index_customer])
+            children[-1].append(0)
 
-        brother = self.generate_solution(brother_order)
-        sister = self.generate_solution(sister_order)
-
-        return [brother, sister]
+        return children
 
     """
     Apply a mutation to a configuration by inverting 2 summits
@@ -241,8 +247,8 @@ class GeneticAlgorithm:
         delivery_i = individual[index_vehicle_i]
         delivery_j = individual[index_vehicle_j]
 
-        index_summit_i = rd.randint(0, len(delivery_i) - 1)
-        index_summit_j = rd.randint(0, len(delivery_j) - 1)
+        index_summit_i = rd.randint(1, len(delivery_i) - 2)
+        index_summit_j = rd.randint(1, len(delivery_j) - 2)
 
         summit_i = delivery_i[index_summit_i]
         summit_j = delivery_j[index_summit_j]
@@ -251,173 +257,6 @@ class GeneticAlgorithm:
         mutated_individual[index_vehicle_j][index_summit_j] = summit_i
 
         return mutated_individual
-
-    """
-    Generate the initial population of a certain size, with randomly arranged individuals
-
-    Parameters
-    ----------
-    size: int - the number of individuals in the population
-    solution: list - an initial solution to the problem
-    proportion: float - the proportion of the given solution in the population
-    ----------
-    
-    Returns
-    -------
-    population: list - a population containing several solution to the problem
-    -------
-    """
-
-    def generate_population(self, initial_solution=None, proportion=0.05) -> list:
-        population = []
-        population_size = self.POPULATION_SIZE
-
-        if initial_solution is not None:
-            nbr_of_solution = int(proportion * population_size)
-
-            population = [initial_solution for i in range(nbr_of_solution)]
-
-            population_size -= nbr_of_solution
-
-        for index_individual in range(population_size):
-            individual = self.generate_solution()
-            population.append(individual)
-
-        return population
-
-    """
-    Generate a solution to the problem
-    
-    Parameters
-    ----------
-    order: list - the order of the summits to deliver
-    ----------
-    
-    Returns
-    -------
-    solution: list - a randomly generated solution to the problem
-    -------
-    """
-    def generate_solution(self, order=None):
-        if order is None:
-            seed = range(1, self.NBR_OF_CUSTOMER + 1)  # as depot's index is 0
-            order = rd.sample(seed, k=self.NBR_OF_CUSTOMER)
-
-        solution = []
-
-        nbr_of_customer_by_vehicle = self.NBR_OF_CUSTOMER // self.NBR_OF_VEHICLE
-        leftover = self.NBR_OF_CUSTOMER % self.NBR_OF_VEHICLE
-
-        for index_vehicle in range(self.NBR_OF_VEHICLE):
-            weight = 0
-            delivery = []
-
-            start = index_vehicle * nbr_of_customer_by_vehicle
-            end = start + nbr_of_customer_by_vehicle
-
-            for index_order in range(start, end):
-                index_customer = order[index_order]
-                customer = self.Graph.nodes[index_customer]
-
-                weight += customer['TOTAL_WEIGHT_KG']
-
-                if weight > self.Graph.nodes[0]['Vehicles']['VEHICLE_TOTAL_WEIGHT_KG'][index_vehicle]:
-                    weight = customer['TOTAL_WEIGHT_KG']
-                    delivery.append(0)
-
-                delivery.append(order[index_order])
-
-            solution.append([0, *delivery, 0])
-
-        if leftover > 0:
-            start = self.NBR_OF_VEHICLE * nbr_of_customer_by_vehicle
-            end = self.NBR_OF_CUSTOMER
-            weight = 0
-
-            for index_order in range(start, end):
-                index_customer = order[index_order]
-                customer = self.Graph.nodes[index_customer]
-
-                weight += customer['TOTAL_WEIGHT_KG']
-
-                if weight > self.Graph.nodes[0]['Vehicles']['VEHICLE_TOTAL_WEIGHT_KG'][0]:
-                    weight = customer['TOTAL_WEIGHT_KG']
-                    solution[0].append(0)
-
-                solution[0].append(order[index_order])
-
-        return solution
-
-    """
-    Draw the Graph showing all the customers summits and the depots, with the road taken to go through them
-    
-    Parameters
-    ----------
-    solution: list - an individual of the population with the lowest fitness score
-    ----------
-    """
-
-    def draw_solution(self, solution, filepath):
-        plt.figure(figsize=[25, 15])
-
-        vehicle_working = 0
-
-        colors = color_palette(n_colors=self.NBR_OF_VEHICLE)
-
-        latitudes = []
-        longitudes = []
-
-        for index_summit in range(len(solution)):
-            summit = solution[index_summit]
-
-            if summit.INDEX != 0:
-                latitudes.append(summit.LATITUDE)
-                longitudes.append(summit.LONGITUDE)
-
-                plt.annotate("{}".format(index_summit),
-                             (summit.LATITUDE, summit.LONGITUDE),
-                             textcoords="offset points",
-                             xytext=(0, 10),
-                             ha='center',
-                             )
-
-            else:
-                latitudes.append(summit.LATITUDE)
-                longitudes.append(summit.LONGITUDE)
-
-                if vehicle_working < self.NBR_OF_VEHICLE - 1:
-                    vehicle_working += 1
-                else:
-                    vehicle_working = 0
-
-                color = colors[vehicle_working]
-
-                plt.plot(latitudes, longitudes,
-                         marker='o',
-                         markerfacecolor='blue',
-                         markeredgecolor='blue',
-                         linestyle='solid',
-                         linewidth=0.5,
-                         color=color,
-                         )
-                latitudes = []
-                longitudes = []
-
-        depot = self.Graph.nodes[0]
-        plt.plot(depot['LATITUDE'], depot['LONGITUDE'], 'rs')
-
-        plt.xlabel('latitude')
-        plt.ylabel('longitude')
-        plt.title('Solution Graph')
-
-        depot_legend = lines.Line2D([], [], color='red', marker='s', linestyle='None', markersize=10, label='Depot')
-        customer_legend = lines.Line2D([], [], color='blue', marker='o', linestyle='None', markersize=10,
-                                       label='Customer')
-        road_legend = lines.Line2D([], [], color='green', marker='None', linestyle='-', linewidth=1, label='Road')
-        plt.legend(handles=[customer_legend, depot_legend, road_legend])
-
-        fig = plt.gcf()
-        fig.savefig(filepath, format='png')
 
     """
     Draw the Graph of the sum of the fitness values of the population at every iteration

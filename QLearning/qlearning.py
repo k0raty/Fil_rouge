@@ -43,7 +43,7 @@ class Qlearning:
 
         current_solution = self.initial_solution
         best_solution = self.initial_solution
-        best_solution_fitness = compute_fitness(best_solution, self.cost_matrix, self.Graph)
+        best_solution_fitness = compute_fitness(best_solution, self.Graph)
 
         history = [best_solution_fitness]
         number_of_round = 1
@@ -55,7 +55,7 @@ class Qlearning:
             if is_solution_valid(modified_solution, self.Graph):
                 current_solution = modified_solution
 
-            current_solution_fitness = compute_fitness(current_solution, self.cost_matrix, self.Graph)
+            current_solution_fitness = compute_fitness(current_solution, self.Graph)
 
             if current_solution_fitness < best_solution_fitness:
                 best_solution = current_solution
@@ -198,7 +198,7 @@ class Qlearning:
 
             if is_solution_valid(modified_solution, self.Graph):
                 current_solution = modified_solution
-                current_solution_fitness = compute_fitness(current_solution, self.cost_matrix, self.Graph)
+                current_solution_fitness = compute_fitness(current_solution, self.Graph)
             else:
                 current_solution_fitness = best_solution_fitness + 1
 
@@ -234,7 +234,7 @@ class Qlearning:
         best_solution = self.initial_solution
         current_solution = self.initial_solution
 
-        best_solution_fitness = compute_fitness(best_solution, self.cost_matrix, self.Graph)
+        best_solution_fitness = compute_fitness(best_solution, self.Graph)
 
         while is_improving:
             iteration += 1
@@ -251,7 +251,7 @@ class Qlearning:
             if is_solution_valid(new_solution, self.Graph):
                 current_solution = new_solution
 
-            current_solution_fitness = compute_fitness(current_solution, self.cost_matrix, self.Graph)
+            current_solution_fitness = compute_fitness(current_solution, self.Graph)
 
             if current_solution_fitness < best_solution_fitness:
                 best_solution = current_solution
@@ -268,7 +268,7 @@ class Qlearning:
                         next_state = rd.randint(0, self.NBR_OF_ACTION - 1)
 
                     current_solution = perform_action(next_state, current_solution)
-                    current_solution_fitness = compute_fitness(current_solution, self.cost_matrix, self.Graph)
+                    current_solution_fitness = compute_fitness(current_solution, self.Graph)
 
                     if next_state not in visited_states:
                         visited_states.append(next_state)

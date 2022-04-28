@@ -4,11 +4,14 @@ from math import pi, cos, sqrt, asin
 import numpy as np
 import utm
 import networkx as nx
-import matplotlib.pyplot as plt
+from copy import deepcopy
 from tqdm import tqdm
+import pandas as pd
 
-""" Import validation fonctions """
-from Utility.validator import *
+""" Import utilities """
+from Utility.tsp_solver import solve_tsp
+from Utility.validator import is_solution_capacity_valid, is_solution_time_valid, is_solution_shape_valid, check_temps_part
+from Utility.plotter import plot_solution
 
 
 def set_root_dir():
@@ -82,7 +85,6 @@ and the cost from one site to the next one
 Parameters
 ----------
 solution: list - list of all the visited sites from the first to the last visited
-cost_matrix: np.ndarray - the cost of each travel to use to compute the fitness
 nbr_of_vehicle: int - the number of vehicle used in the given solution
 ----------
 
@@ -93,7 +95,7 @@ fitness_score:float - value of the cost of this configuration
 """
 
 
-def compute_fitness(solution: list, cost_matrix: np.ndarray, graph) -> float:
+def compute_fitness(solution: list, graph) -> float:
     nbr_of_vehicle = len(solution)
 
     solution_cost = 0
@@ -107,66 +109,18 @@ def compute_fitness(solution: list, cost_matrix: np.ndarray, graph) -> float:
         nbr_of_summit = len(delivery)
 
         for index_summit in range(nbr_of_summit - 1):
-            # remove 1 as the customer's index start at 1 (because depot is 0)
-            summit_from = delivery[index_summit] - 1
-            summit_to = delivery[index_summit + 1] - 1
+            summit_from = delivery[index_summit]
+            summit_to = delivery[index_summit + 1]
 
-            delivery_distance += cost_matrix[summit_from][summit_to]
+            if summit_from == summit_to:
+                print('solution', solution)
+                print('delivery', delivery)
+                print('customer', summit_from)
+            delivery_distance += graph[summit_from][summit_to]['weight']
 
         solution_cost += delivery_distance * cost_by_distance 
 
     return solution_cost
-
-
-"""
-Fill a matrix storing the cost of the travel between every customers
-
-Parameters
-----------
-customers: list - the list of customers with their coordinates
-----------
-
-Returns
--------
-cost_matrix: np.ndarray - a matrix containing in a cell (i, j) the distance of the travel between
-site i and j
--------
-"""
-
-
-def compute_cost_matrix(graph) -> np.ndarray:
-    nbr_of_customer = len(graph)
-    cost_matrix = np.zeros((nbr_of_customer + 1, nbr_of_customer + 1))
-
-    depot = graph.nodes[0]
-
-    for index_i in range(nbr_of_customer):
-        customer_i = graph.nodes[index_i]
-
-        distance_to_depot = compute_spherical_distance(
-            depot['CUSTOMER_LATITUDE'],
-            depot['CUSTOMER_LONGITUDE'],
-            customer_i['CUSTOMER_LATITUDE'],
-            customer_i['CUSTOMER_LONGITUDE'],
-        )
-
-        cost_matrix[0, index_i] = distance_to_depot
-        cost_matrix[index_i, 0] = distance_to_depot
-
-        for index_j in range(nbr_of_customer):
-            customer_j = graph.nodes[index_j]
-
-            distance_from_i_to_j = compute_spherical_distance(
-                customer_i['CUSTOMER_LATITUDE'],
-                customer_i['CUSTOMER_LONGITUDE'],
-                customer_j['CUSTOMER_LATITUDE'],
-                customer_j['CUSTOMER_LONGITUDE'],
-            )
-
-            cost_matrix[index_i + 1, index_j + 1] = distance_from_i_to_j
-            cost_matrix[index_j + 1, index_i + 1] = distance_from_i_to_j
-
-    return cost_matrix
 
 
 """
@@ -214,7 +168,15 @@ def create_graph(df_customers, df_vehicles, vehicle_speed=50):
     for index_customer in range(nbr_of_summit):
         customer = df_customers.iloc[index_customer]
         customer_dict = customer.to_dict()
-        customer_dict['pos'] = utm.from_latlon(customer['CUSTOMER_LATITUDE'], customer_dict['CUSTOMER_LONGITUDE'])[:2]
+
+        latitude = customer_dict['CUSTOMER_LATITUDE']
+        longitude = customer_dict['CUSTOMER_LONGITUDE']
+
+        pos = utm.from_latlon(latitude, longitude)[:2]
+        pos_x = pos[0] / 1000
+        pos_y = pos[1] / 1000
+
+        customer_dict['pos'] = (pos_x, pos_y)
 
         graph.nodes[customer_dict['INDEX']].update(customer_dict)
 
@@ -239,47 +201,135 @@ def create_graph(df_customers, df_vehicles, vehicle_speed=50):
     return graph
 
 
-# A ADAPTER DANS LA CLASSE
-def plotting(x, G):
-    """
-    Affiche les trajectoires des différents camion entre les clients.
-    Chaque trajectoire a une couleur différente.
-    Parameters
-    ----------
-    x : Routage solution
-    G : Graphe en question
-    Returns
-    -------
-    None.
-    """
-    plt.clf()
-    X = [G.nodes[i]['pos'][0] for i in range(0, len(G))]
-    Y = [G.nodes[i]['pos'][1] for i in range(0, len(G))]
-    plt.plot(X, Y, "o")
-    plt.text(X[0], Y[0], "0", color="r", weight="bold", size="x-large")
-    plt.title("Trajectoire de chaque camion")
-    colors = ['blue', 'orange', 'green', 'red', 'purple', 'brown', 'pink', 'gray', 'olive', 'cyan']
-    couleur = 0
-    print(x)
-    for camion in range(0, len(x)):
-        assert (camion < len(colors)), "Trop de camion, on ne peut pas afficher"
-        if len(x) > 2:
-            xo = [X[o] for o in x[camion]]
-            yo = [Y[o] for o in x[camion]]
-            plt.plot(xo, yo, colors[couleur], label=G.nodes[0]['Vehicles']["VEHICLE_VARIABLE_COST_KM"][camion])
-            couleur += 1
-    plt.legend(loc='upper left')
-    plt.show()
+"""
+Fonction d'initialisation du solution possible à n camions. 
+Il y a beaucoup d'assertions car en effet, certains graph généré peuvent ne pas présenter de solution: 
+    -Pas assez de voiture pour finir la livraison dans le temps imparti
+    -Les ressources demandées peuvent être trop conséquentes 
+    -Ect...
+
+Parameters
+----------
+graph : Graph du problème
+----------
+
+Returns
+-------
+solution: list - a first valid solution .
+-------
+"""
 
 
-def energie(x, G):
+def generate_initial_solution(graph, initial_order=None):
+    total_vehicles_capacity = sum(graph.nodes[0]['Vehicles']["VEHICLE_TOTAL_WEIGHT_KG"].values())
+    total_customers_capacity = sum([graph.nodes[i]['TOTAL_WEIGHT_KG'] for i in range(len(graph.nodes))])
+
+    max_vehicle_capacity = max(graph.nodes[0]['Vehicles']["VEHICLE_TOTAL_WEIGHT_KG"].values())
+    max_customer_capacity = max([graph.nodes[i]['TOTAL_WEIGHT_KG'] for i in range(len(graph.nodes))])
+
+    message = 'Some customers have packages heavier than vehicles capacity'
+    assert (max_customer_capacity < max_vehicle_capacity), message
+
+    message = 'There is not enough vehicles to achieve the deliveries in time, regardless the configuration'
+    assert (graph.nodes[0]['NBR_OF_VEHICLE'] > graph.nodes[0]['n_min']), message
+
+    solution = []  # Notre première solution
+
+    for index_delivery in range(graph.nodes[0]['NBR_OF_VEHICLE']):
+        solution.append([0])
+
+    customers = [node for node in graph.nodes]
+    customers.pop(0)
+    # Initialisation du dataframe renseignant sur les sommets et leurs contraintes
+
+    if initial_order is None:
+        initial_order = solve_tsp(graph)
+
+        plot_solution([initial_order], graph, title='Solution to the TSP')
+
+    message = 'The initial order should start with 0 (the depot)'
+    assert (initial_order[0] == 0), message
+
+    message = 'All packages to deliver are heavier than total vehicles capacity'
+    assert (total_customers_capacity <= total_vehicles_capacity), message
+
+    # On remplit la solution de la majorité des sommets
+    df_camion = pd.DataFrame()  # Dataframe renseignant sur les routes, important pour la seconde phase de  remplissage
+    df_camion.index = range(graph.nodes[0]['NBR_OF_VEHICLE'])
+    vehicles_capacity = graph.nodes[0]['Vehicles']["VEHICLE_TOTAL_WEIGHT_KG"]
+    ressources = [vehicles_capacity[i] for i in range(graph.nodes[0]['NBR_OF_VEHICLE'])]
+
+    df_camion['Ressources'] = ressources
+    columns = [
+        'Vehicles',
+        'Ressource_to_add',
+        'Id',
+        'CUSTOMER_TIME_WINDOW_FROM_MIN',
+        'CUSTOMER_TIME_WINDOW_TO_MIN',
+        'Ressource_camion',
+    ]
+    df_initial_order = pd.DataFrame(columns=columns)
+    camion = 0
+
+    i = 1  # On ne prend pas en compte le zéros du début
+    with tqdm(total=len(initial_order)) as pbar:
+        while i < len(initial_order):
+            message = 'Not enough vehicles'
+            assert (camion < graph.nodes[0]['NBR_OF_VEHICLE']), message
+
+            nodes_to_add = initial_order[i]
+            message = 'Given delivery goes back to depot'
+            assert (nodes_to_add != 0), message
+
+            q_nodes = graph.nodes[nodes_to_add]['TOTAL_WEIGHT_KG']
+            int_min = graph.nodes[nodes_to_add]["CUSTOMER_TIME_WINDOW_FROM_MIN"]
+            int_max = graph.nodes[nodes_to_add]["CUSTOMER_TIME_WINDOW_TO_MIN"]
+
+            temp = deepcopy(solution[camion])
+            temp.append(nodes_to_add)
+
+            if df_camion.loc[camion]['Ressources'] >= q_nodes and check_temps_part(temp, graph):
+                Q = graph.nodes[0]['Vehicles']['VEHICLE_TOTAL_WEIGHT_KG'][camion]
+                message = 'Some customers have packages heavier than vehicles capacity'
+                assert (q_nodes <= Q), message
+
+                solution[camion].append(nodes_to_add)
+                df_camion['Ressources'].loc[camion] += -q_nodes
+                i += 1
+                pbar.update(1)
+                assert (solution[camion] == temp)
+            else:
+                print(nodes_to_add)
+                assert (solution[camion] != temp)
+                camion += 1
+
+            df_initial_order = df_initial_order.append([{
+                'Vehicles': camion,
+                "Ressource_to_add": q_nodes,
+                "Id": nodes_to_add,
+                "CUSTOMER_TIME_WINDOW_FROM_MIN": int_min,
+                "CUSTOMER_TIME_WINDOW_TO_MIN": int_max,
+                "Ressource_camion": df_camion.loc[camion]['Ressources'],
+            }])
+
+    for delivery in solution:
+        delivery.append(0)
+
+    is_solution_time_valid(solution, graph)
+    is_solution_capacity_valid(solution, graph)
+    is_solution_shape_valid(solution, graph)
+
+    return solution
+
+
+def energie(x, graph):
     """
     Fonction coût pour le recuit
 
     Parameters
     ----------
     x : solution
-    G : Graph du problème
+    graph : Graph du problème
 
     Returns
     -------
@@ -290,10 +340,10 @@ def energie(x, G):
     somme = 0
     for route in range(0, K):
         if len(x[route]) > 2:  # si la route n'est pas vide
-            w = G.nodes[0]['Vehicles']['VEHICLE_VARIABLE_COST_KM'][
+            w = graph.nodes[0]['Vehicles']['VEHICLE_VARIABLE_COST_KM'][
                 route]  # On fonction du coût d'utilisation du camion
             weight_road = sum(
-                [G[x[route][sommet]][x[route][sommet + 1]]['weight'] for sommet in range(0, len(x[route]) - 1)])
+                [graph[x[route][sommet]][x[route][sommet + 1]]['weight'] for sommet in range(0, len(x[route]) - 1)])
             somme += w * weight_road
     return somme
 
@@ -320,55 +370,3 @@ def energie_part(x, G, camion):
         return somme
     else:
         return 0
-
-
-# A ADAPTER DANS LA CLASSE
-def perturbation_intra(x, G):
-    """
-    Deuxième phase de perturbation , on n'échange plus des clients entre chaque trajectoire de camion  mais
-    seulement l'initial_order des client pour chaque route
-
-    Parameters
-    ----------
-    x : solution après la première phase
-    G : Graphe du problème
-
-    Returns
-    -------
-    x : solution finale.
-
-    """
-    d = energie(x, G)
-    d0 = d + 1
-    it = 1
-    list_E = [d]
-    while d < d0:
-        it += 1
-        print("iteration", it, "d=", d)
-        d0 = d
-        for camion in tqdm(range(0, len(x))):
-            route = x[camion]
-            for i in range(1, len(route) - 1):
-                for j in range(i + 2, len(route)):
-                    d_part = energie_part(route, G, camion)
-                    r = route[i:j].copy()
-                    r.reverse()
-                    route2 = route[:i] + r + route[j:]
-                    t = energie_part(route2, G, camion)
-                    if (t < d_part):
-                        if check_temps_part(route2, G) == True:
-                            x[camion] = route2
-        d = energie(x, G)
-        list_E.append(d)
-        assert (is_solution_time_valid(x, G))
-        plotting(x, G)
-    plt.clf()
-    plt.plot(list_E, 'o-')
-    plt.title("Evoluation de l'énergie lors de la seconde phase")
-    plt.show()
-
-    ###Assertions de fin###
-
-    assert (is_solution_shape_valid(x, G))
-    assert (is_solution_valid(x, G)), "Mauvaise initialisation au niveau du temps"
-    return x

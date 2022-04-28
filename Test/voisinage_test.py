@@ -5,7 +5,7 @@ from QLearning.voisinage import *
 solution = [[0,1,2,3,0],[0,4,5,6,0]]
 print(solution)
 print(intra_route_swap(solution))
-print(InterRouteSwap(solution))
+print(inter_route_swap(solution))
 print(IntraRouteShift(solution))
 print(inter_route_shift(solution))
 print()
@@ -18,7 +18,7 @@ print()
 
 solution2 = [[0,1,2,3,4,0],[0,5,6,7,0],[0,8,9,10,11,0]]
 print(solution2)
-print(RemoveSmallestRoad(solution2))
+print(remove_smallest_road(solution2))
 print()
 
 solution3 = [[0,1,2,3,4,0],[0,5,6,7,0],[0,8,9,10,11,0]]

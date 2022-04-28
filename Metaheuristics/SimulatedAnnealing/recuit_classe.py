@@ -23,12 +23,14 @@ Concernant la solution retournée :
 import copy
 import math
 import warnings
+import matplotlib.pyplot as plt
+from tqdm import tqdm
 
 """ Import utilities """
 from Utility.database import Database
 from Utility.common import *
 from Utility.validator import *
-from Metaheuristics.SimulatedAnnealing.simulated_annealing_initialization import generate_order
+from Utility.plotter import Plotter
 
 set_root_dir()
 
@@ -46,7 +48,8 @@ class Annealing:
             database = Database(vehicle_speed)
             graph = database.Graph
 
-        self.graph = graph
+        self.Graph = graph
+        self.Plotter = Plotter(graph)
 
         self.NBR_OF_CUSTOMER = len(graph) - 1
         self.T = initial_temperature
@@ -80,147 +83,40 @@ class Annealing:
         print("Initialisation de la solution \n")
 
         if initial_solution is None:
-            solution = self.generate_initial_solution()
+            solution = generate_initial_solution()
 
         else:
             solution = initial_solution
 
-        plotting(solution, self.graph)
+        self.Plotter.plot_solution(solution, title='initial solution')
+
         print("Solution initialisée , début de la phase de recuit \n")
 
-        solution = self.recuit_simule(solution, self.graph, self.T, self.speedy)
-        self.fitness = energie(solution, self.graph)
+        solution = self.recuit_simule(solution, self.Graph, self.T, self.speedy)
+
+        self.solution = solution
+        self.fitness = energie(self.solution, self.Graph)
+
+        self.Plotter.plot_solution(self.solution)
+
         print("Pour l'instant l'énergie est de :%d" % self.fitness)
         print("Début de la phase de perfectionnement de la solution \n")
 
-        solution = self.perturbation_intra(solution, self.graph, speedy)
-        self.fitness = energie(solution, self.graph)
+        solution = self.perturbation_intra(solution, self.Graph, speedy)
+
+        self.solution = solution
+        self.fitness = energie(self.solution, self.Graph)
+
+        self.Plotter.plot_solution(self.solution)
+
         print("Finalement l'énergie est de :%d" % self.fitness)
-
-        return solution
-
-    """
-    Fonction d'initialisation du solution possible à n camions. 
-    Il y a beaucoup d'assertions car en effet, certains graph généré peuvent ne pas présenter de solution: 
-        -Pas assez de voiture pour finir la livraison dans le temps imparti
-        -Les ressources demandées peuvent être trop conséquentes 
-        -Ect...
-
-    Parameters
-    ----------
-    graph : Graph du problème
-    ----------
-
-    Returns
-    -------
-    solution: list - a first valid solution .
-    -------
-    """
-
-    def generate_initial_solution(self, initial_order=None):
-        total_vehicles_capacity = sum(self.graph.nodes[0]['Vehicles']["VEHICLE_TOTAL_WEIGHT_KG"].values())
-        total_customers_capacity = sum([self.graph.nodes[i]['TOTAL_WEIGHT_KG'] for i in range(len(self.graph.nodes))])
-
-        max_vehicle_capacity = max(self.graph.nodes[0]['Vehicles']["VEHICLE_TOTAL_WEIGHT_KG"].values())
-        max_customer_capacity = max([self.graph.nodes[i]['TOTAL_WEIGHT_KG'] for i in range(len(self.graph.nodes))])
-
-        message = 'Some customers have packages heavier than vehicles capacity'
-        assert (max_customer_capacity < max_vehicle_capacity), message
-
-        message = 'There is not enough vehicles to achieve the deliveries in time, regardless the configuration'
-        assert (self.graph.nodes[0]['NBR_OF_VEHICLE'] > self.graph.nodes[0]['n_min']), message
-
-        solution = []  # Notre première solution
-
-        for index_delivery in range(self.graph.nodes[0]['NBR_OF_VEHICLE']):
-            solution.append([0])
-
-        customers = [node for node in self.graph.nodes]
-        customers.pop(0)
-        # Initialisation du dataframe renseignant sur les sommets et leurs contraintes
-        if initial_order is None:
-            initial_order = generate_order(self.graph)
-        message = 'The initial order should start with 0 (the depot)'
-        assert (initial_order[0] == 0), message
-
-        message = 'All packages to deliver are heavier than total vehicles capacity'
-        assert (total_customers_capacity <= total_vehicles_capacity), message
-
-        # On remplit la solution de la majorité des sommets
-        df_camion = pd.DataFrame()  # Dataframe renseignant sur les routes, important pour la seconde phase de  remplissage
-        df_camion.index = range(self.graph.nodes[0]['NBR_OF_VEHICLE'])
-        vehicles_capacity = self.graph.nodes[0]['Vehicles']["VEHICLE_TOTAL_WEIGHT_KG"]
-        ressources = [vehicles_capacity[i] for i in range(self.graph.nodes[0]['NBR_OF_VEHICLE'])]
-
-        df_camion['Ressources'] = ressources
-        columns = [
-            'Vehicles',
-            'Ressource_to_add',
-            'Id',
-            'CUSTOMER_TIME_WINDOW_FROM_MIN',
-            'CUSTOMER_TIME_WINDOW_TO_MIN',
-            'Ressource_camion',
-        ]
-        df_initial_order = pd.DataFrame(columns=columns)
-        camion = 0
-
-        i = 1  # On ne prend pas en compte le zéros du début
-        with tqdm(total=len(initial_order)) as pbar:
-            while i < len(initial_order):
-                message = 'Not enough vehicles'
-                assert (camion < self.graph.nodes[0]['NBR_OF_VEHICLE']), message
-
-                nodes_to_add = initial_order[i]
-                message = 'Given delivery goes back to depot'
-                assert (nodes_to_add != 0), message
-
-                q_nodes = self.graph.nodes[nodes_to_add]['TOTAL_WEIGHT_KG']
-                int_min = self.graph.nodes[nodes_to_add]["CUSTOMER_TIME_WINDOW_FROM_MIN"]
-                int_max = self.graph.nodes[nodes_to_add]["CUSTOMER_TIME_WINDOW_TO_MIN"]
-
-                temp = copy.deepcopy(solution[camion])
-                temp.append(nodes_to_add)
-
-                if df_camion.loc[camion]['Ressources'] >= q_nodes and check_temps_part(temp, self.graph):
-                    Q = self.graph.nodes[0]['Vehicles']['VEHICLE_TOTAL_WEIGHT_KG'][camion]
-                    message = 'Some customers have packages heavier than vehicles capacity'
-                    assert (q_nodes <= Q), message
-
-                    solution[camion].append(nodes_to_add)
-                    df_camion['Ressources'].loc[camion] += -q_nodes
-                    i += 1
-                    pbar.update(1)
-                    assert (solution[camion] == temp)
-                else:
-                    print(nodes_to_add)
-                    assert (solution[camion] != temp)
-                    camion += 1
-
-                df_initial_order = df_initial_order.append([{
-                    'Vehicles': camion,
-                    "Ressource_to_add": q_nodes,
-                    "Id": nodes_to_add,
-                    "CUSTOMER_TIME_WINDOW_FROM_MIN": int_min,
-                    "CUSTOMER_TIME_WINDOW_TO_MIN": int_max,
-                    "Ressource_camion": df_camion.loc[camion]['Ressources'],
-                }])
-
-        for delivery in solution:
-            delivery.append(0)
-
-        is_solution_time_valid(solution, self.graph)
-        is_solution_capacity_valid(solution, self.graph)
-        is_solution_shape_valid(solution, self.graph)
-
-        plotting(solution, self.graph)
-
-        return solution
 
     """
     Compute a temperature thanks to the energy of the solution
     """
 
-    def compute_temperature(self, energy, initial_energy):
+    @staticmethod
+    def compute_temperature(energy, initial_energy):
         temperature = 1500 / math.log(initial_energy - energy)
         return temperature
 
@@ -342,7 +238,6 @@ class Annealing:
                                 E_min = E
 
             ###Assertions de fin###
-            plotting(best_x, graph)
 
             is_solution_valid(best_x, graph)
 
@@ -371,8 +266,6 @@ class Annealing:
         fig.show()
 
         is_solution_valid(best_x, graph)
-
-        plotting(solution, graph)
 
         return best_x
 
@@ -424,7 +317,6 @@ class Annealing:
 
             is_solution_time_valid(solution, graph)
 
-            plotting(solution, graph)
             if speedy:
                 break
 

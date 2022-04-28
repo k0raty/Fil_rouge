@@ -7,7 +7,7 @@ import numpy as np
 """ Import utilities """
 from Utility.database import Database
 from Utility.pool import Pool
-from Utility.common import compute_cost_matrix, set_root_dir
+from Utility.common import set_root_dir
 
 """ Import metaheuristics """
 from Metaheuristics.GeneticAlgorithm.genetic_algorithm import GeneticAlgorithm
@@ -73,9 +73,8 @@ class ModelSma(Model):
         self.Database = Database(vehicle_speed)
 
         graph = self.Database.Graph
-        cost_matrix = compute_cost_matrix(graph)
 
-        self.Pool = Pool(cost_matrix, graph)
+        self.Pool = Pool(graph)
 
         self.schedule = RandomActivation(self)
         self.datacollector = DataCollector(
@@ -86,12 +85,12 @@ class ModelSma(Model):
 
         for index_agent in range(nbr_of_genetic):
             unique_id = 'genetic_{}'.format(index_agent)
-            agent = AgentMeta(unique_id, self, GeneticAlgorithm(cost_matrix, graph=graph), speedy)
+            agent = AgentMeta(unique_id, self, GeneticAlgorithm(graph=graph), speedy)
             self.schedule.add(agent)
 
         for index_agent in range(nbr_of_tabou):
             unique_id = 'tabou_{}'.format(index_agent)
-            agent = AgentMeta(unique_id, self, Tabou(cost_matrix, graph=graph), speedy)
+            agent = AgentMeta(unique_id, self, Tabou(graph=graph), speedy)
             self.schedule.add(agent)
 
         for index_agent in range(nbr_of_recuit):
