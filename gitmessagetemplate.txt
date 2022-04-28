@@ -1,0 +1,28 @@
+
+
+# type(place): Add short message here
+#
+# Add a long description here to detail what you have been doing so far
+#
+# The type should be one of the following
+# - fix   : When you correct a bug (please describe it a little bit)
+# - feat  : When your commit are related to your features
+# - docs  : When you write documentation
+# - style : When you change style of code without modifying it
+# - refactor : When you clean the code or improve it without adding feat or resolve bug
+# - perf  : When you improve the performance
+# - test  : When you write test
+# - ci    : When you write some stuff on the CI
+# - chore : When you modify something else
+#
+# place should describe a section of the codebase
+# - d    : dataset only
+# - m    : metaheuristic only
+# - s    : sma only
+# - q    : q-learning only
+# - a    : touch almost every part of the project
+# - name : any part of the code base
+#
+# The short message should
+# - start with a verbe on imperative state
+# - describe what you have done
