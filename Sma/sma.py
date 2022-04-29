@@ -4,32 +4,26 @@ from mesa.time import RandomActivation  # agents activated in random order at ea
 from mesa.datacollection import DataCollector
 import numpy as np
 
-""" Import utilities """
 from Utility.database import Database
 from Utility.pool import Pool
-from Utility.common import set_root_dir
+from Utility.common import set_root_dir, compute_gini
 
-""" Import metaheuristics """
 from Metaheuristics.GeneticAlgorithm.genetic_algorithm import GeneticAlgorithm
 from Metaheuristics.Tabou.tabou import Tabou
-from Metaheuristics.SimulatedAnnealing.recuit_classe import Annealing
+from Metaheuristics.SimulatedAnnealing.simulated_annealing import Annealing
 
 set_root_dir()
 
-""" Define agents """
-
 
 class AgentMeta(Agent):
-    """An agent with fixed initial wealth."""
-
     fitness = np.inf
     solution = []
     initial_solution = None
 
-    def __init__(self, unique_id, model, meta, speedy):
+    def __init__(self, unique_id: str, model, meta):
         super().__init__(unique_id, model)
+
         self.meta = meta
-        self.speedy = speedy
 
     def step(self):
         self.meta.main(self.initial_solution)
@@ -37,44 +31,13 @@ class AgentMeta(Agent):
         self.fitness = self.meta.fitness
 
 
-"""
-Define Gini
-
-Parameters
-----------
-model: ModelSma - the model gathering the agents containing the metaheuristics
-----------
-
-Returns 
--------
-gini: float - the gini score
--------
-"""
-
-
-def compute_gini(model) -> float:
-    agents_fitness = sorted([agent.fitness for agent in model.schedule.agents])
-
-    total_fitness = sum(agents_fitness)
-
-    A = model.nbr_of_agent * total_fitness
-    B = sum(fitness * (model.nbr_of_agent - index) for index, fitness in enumerate(agents_fitness))
-
-    gini = 1 + (1 / model.nbr_of_agent) - 2 * A / B
-
-    return gini
-
-
-""" Define model """
-
-
 class ModelSma(Model):
     def __init__(self, nbr_of_genetic=0, nbr_of_tabou=0, nbr_of_recuit=0, vehicle_speed=40, speedy=True):
+        super().__init__()
+
         self.Database = Database(vehicle_speed)
-
-        graph = self.Database.Graph
-
-        self.Pool = Pool(graph)
+        self.Graph = self.Database.Graph
+        self.Pool = Pool(self.Graph)
 
         self.schedule = RandomActivation(self)
         self.datacollector = DataCollector(
@@ -85,17 +48,17 @@ class ModelSma(Model):
 
         for index_agent in range(nbr_of_genetic):
             unique_id = 'genetic_{}'.format(index_agent)
-            agent = AgentMeta(unique_id, self, GeneticAlgorithm(graph=graph), speedy)
+            agent = AgentMeta(unique_id, self, GeneticAlgorithm(graph=self.Graph))
             self.schedule.add(agent)
 
         for index_agent in range(nbr_of_tabou):
             unique_id = 'tabou_{}'.format(index_agent)
-            agent = AgentMeta(unique_id, self, Tabou(graph=graph), speedy)
+            agent = AgentMeta(unique_id, self, Tabou(graph=self.Graph))
             self.schedule.add(agent)
 
         for index_agent in range(nbr_of_recuit):
             unique_id = 'recuit_{}'.format(index_agent)
-            agent = AgentMeta(unique_id, self, Annealing(graph=graph), speedy)
+            agent = AgentMeta(unique_id, self, Annealing(graph=self.Graph, speedy=speedy))
             self.schedule.add(agent)
 
     """
@@ -112,15 +75,15 @@ class ModelSma(Model):
             for index_agent in range(self.nbr_of_agent):
                 self.schedule.agents[index_agent].initial_solution = solution_list
 
-        elif self.nbr_of_agent == len(solution_list):  # scénario Best Solutions
+        elif self.nbr_of_agent == len(solution_list):
             for index_agent in range(self.nbr_of_agent):
                 self.schedule.agents[index_agent].initial_solution = solution_list[index_agent]
 
-        else:  # autres scénarios
+        else:
             for index_agent in range(self.nbr_of_agent):
                 self.schedule.agents[index_agent].initial_solution = solution_list[0]
 
-        self.schedule.step()  # speedy define whether you want a quick sol or not
+        self.schedule.step()
         self.datacollector.collect(self)
 
         solutions = self.datacollector.get_agent_vars_dataframe()

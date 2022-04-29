@@ -1,40 +1,41 @@
-# -*- coding: utf-8 -*-
-
-"""
-Recuit-simule sur la base de donnée du fil rouge, plusieurs notions à prendre en compte, l'algo se déroule en 3 étapes:
-    -Initialisation -> on fait un premier recuit qui réalise l'algorithme du problème du voyageur, à partir de cela on initialise une première solution vérifiant les contraintes
-    -Recuit -> Par un recuit , on perturbe notre solution en mélangeant les clients des différents camions uniquement, on récupère une solution x lorsque cela n'évolue plus.
-    -Affinement -> On perturbe l'initial_order de desservissement des clients pour un camion en question puis on retourne la meilleure solution.
-Au niveau des contraintes:
-    - On respecte les intervalles de temps pour desservir en temps et en heure chaque client
-    -On respecte les ressources à livrer au niveau du poids en kg
-    -Chaque camion a son propre coefficient et sa propre capacité de livraison
-    -Le temps de trajets d'un camion pour aller du dépot à la première ville et de la dernière ville au dépot n'est pas pris en compte
-    -Le temps de livraison est pris en compte mais divisé par 10 car pafois trop long (+ d'1h pour délivrer...)
-    En effet, certaines villes sont a plus de 500 minutes du dépot lorsque le camion roule à 50 km/h !
-Concernant la solution retournée :
-    De la forme x=[[0,client1,client2,...,0],[0,client_n,client_n+1..,0],[clients_du_camion_3],[client_du_camion_4]...]
-    Les informations du camion numéro i sont accessibles via : G.nodes[0]['Vehicles'][camion]
-    Chaque client i a un identifiant client accessible via G.nodes[i]['CUSTOMER_CODE'], G.nodes[i] donne d'ailleurs d'autres informations sur le client i.
-    
-"""
-
 """ Import librairies """
 import copy
 import math
 import warnings
 import matplotlib.pyplot as plt
-from tqdm import tqdm
 
-""" Import utilities """
 from Utility.database import Database
 from Utility.common import *
 from Utility.validator import *
-from Utility.plotter import Plotter
+from Utility.plotter import plot_solution
 
 set_root_dir()
 
 warnings.simplefilter(action='ignore', category=FutureWarning)
+
+"""
+Recuit-simule sur la base de donnée du fil rouge, plusieurs notions à prendre en compte, l'algo se déroule en 3 étapes:
+    -Initialisation -> on fait un premier recuit qui réalise l'algorithme du problème du voyageur, à partir de cela on
+     initialise une première solution vérifiant les contraintes
+    -Recuit -> Par un recuit , on perturbe notre solution en mélangeant les clients des différents camions uniquement,
+     on récupère une solution x lorsque cela n'évolue plus.
+    -Affinement -> On perturbe l'initial_order de desservissement des clients pour un camion en question puis on 
+    retourne la meilleure solution.
+Au niveau des contraintes:
+    - On respecte les intervalles de temps pour desservir en temps et en heure chaque client
+    -On respecte les ressources à livrer au niveau du poids en kg
+    -Chaque camion a son propre coefficient et sa propre capacité de livraison
+    -Le temps de trajets d'un camion pour aller du dépot à la première ville et de la dernière ville au dépot n'est pas
+     pris en compte
+    -Le temps de livraison est pris en compte mais divisé par 10 car pafois trop long (+ d'1h pour délivrer...)
+    En effet, certaines villes sont a plus de 500 minutes du dépot lorsque le camion roule à 50 km/h !
+Concernant la solution retournée :
+    De la forme x=[[0,client1,client2,...,0],[0,client_n,client_n+1..,0],[clients_du_camion_3],[client_du_camion_4]...]
+    Les informations du camion numéro i sont accessibles via : G.nodes[0]['Vehicles'][camion]
+    Chaque client i a un identifiant client accessible via G.nodes[i]['CUSTOMER_CODE'], G.nodes[i] donne d'ailleurs 
+    d'autres informations sur le client i.
+    
+"""
 
 
 class Annealing:
@@ -43,17 +44,17 @@ class Annealing:
 
     speedy = True
 
-    def __init__(self, graph=None, initial_temperature=1500, vehicle_speed=50):
+    def __init__(self, graph=None, initial_temperature=1500, vehicle_speed=50, speedy=False):
         if graph is None:
             database = Database(vehicle_speed)
             graph = database.Graph
 
         self.Graph = graph
-        self.Plotter = Plotter(graph)
 
         self.NBR_OF_CUSTOMER = len(graph) - 1
         self.T = initial_temperature
         self.speed = vehicle_speed
+        self.Speedy = speedy
 
     """
     Main function , réalise le recuit. 
@@ -73,22 +74,21 @@ class Annealing:
     -------
     """
 
-    def main(self, initial_solution=None, speedy=False):
+    def main(self, initial_solution=None):
         ordre_init_path = os.path.join('Metaheuristics', 'SimulatedAnnealing', 'df_ordre_init.pkl')
         df = pd.read_pickle(ordre_init_path)
 
         initial_solution = list(df['Ordre'])
 
-        self.speedy = speedy
         print("Initialisation de la solution \n")
 
         if initial_solution is None:
-            solution = generate_initial_solution()
+            solution = generate_initial_solution(self.Graph)
 
         else:
             solution = initial_solution
 
-        self.Plotter.plot_solution(solution, title='initial solution')
+        plot_solution(solution, graph=self.Graph, title='initial solution')
 
         print("Solution initialisée , début de la phase de recuit \n")
 
@@ -97,17 +97,17 @@ class Annealing:
         self.solution = solution
         self.fitness = energie(self.solution, self.Graph)
 
-        self.Plotter.plot_solution(self.solution)
+        plot_solution(self.solution, graph=self.Graph)
 
         print("Pour l'instant l'énergie est de :%d" % self.fitness)
         print("Début de la phase de perfectionnement de la solution \n")
 
-        solution = self.perturbation_intra(solution, self.Graph, speedy)
+        solution = self.perturbation_intra(solution, self.Graph, self.Speedy)
 
         self.solution = solution
         self.fitness = energie(self.solution, self.Graph)
 
-        self.Plotter.plot_solution(self.solution)
+        plot_solution(self.solution, graph=self.Graph)
 
         print("Finalement l'énergie est de :%d" % self.fitness)
 
@@ -121,7 +121,8 @@ class Annealing:
         return temperature
 
     """
-    Fonction de recuit qui mélanges les clients de chaque camion mais qui ne modifie pas l'initial_order de deservissement pour un camion en question. 
+    Fonction de recuit qui mélanges les clients de chaque camion mais qui ne modifie pas l'initial_order de 
+    livraison pour un camion en question. 
     Il y a beaucoup d'assertions afin de vérifier que la perturbation engendrée ne crée pas de problème de contraintes.  
        -On prend un sommet d'une route parcourue par un camion pour l'ajouter à une autre route
        -Il est possible qu'à chaque étape ,il n'y ait pas de modification. 
@@ -148,7 +149,6 @@ class Annealing:
 
         it = 0
         k = 10e-5  # arbitraire
-        Q = [graph.nodes[0]['Vehicles']['VEHICLE_TOTAL_WEIGHT_KG'][i] for i in range(0, len(solution))]
         nb_sommet = len(graph.nodes)
         E = energie(solution, graph)
         E0 = E + 2

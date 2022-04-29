@@ -5,8 +5,8 @@ import pandas as pd
 import random as rd
 from copy import deepcopy
 from os.path import join
+from tqdm import tqdm
 
-""" Import utilities """
 from Utility.database import Database
 from Utility.common import compute_fitness, set_root_dir
 from Utility.plotter import plot_solution
@@ -17,11 +17,11 @@ set_root_dir()
 class GeneticAlgorithm:
     PROBA_CROSSING: float = 0.8
     TOURNAMENT_SIZE: int = 4
-    PENALTY: int = 2
     POPULATION_SIZE: int = 50
-    MAX_ITERATION: int = 20
 
     fitness: float = 0
+    fitness_evolution: list = []
+    fitness_mean_evolution: list = []
     solution: list = []
 
     """
@@ -36,16 +36,16 @@ class GeneticAlgorithm:
     ----------
     """
 
-    def __init__(self, graph=None, vehicle_speed=40):
+    def __init__(self, graph=None, max_iteration=20):
         if graph is None:
-            database = Database(vehicle_speed)
+            database = Database()
             graph = database.Graph
 
         self.Graph = graph
 
         self.NBR_OF_CUSTOMER = len(graph) - 1  # the depot is not a customer
         self.NBR_OF_VEHICLE = len(graph.nodes[0]['Vehicles'])
-
+        self.MAX_ITERATION = max_iteration
         self.PROBA_MUTATION = 1 / self.NBR_OF_CUSTOMER
 
     """
@@ -57,19 +57,22 @@ class GeneticAlgorithm:
     ----------
     """
 
-    def main(self, initial_solution=None, speedy=True):
+    def main(self, initial_solution=None):
         initial_solution_path = join('Dataset', 'Initialized', 'valid_initial_solution.pkl')
         initial_solution_df = pd.read_pickle(initial_solution_path)
 
         initial_solution_set = list(initial_solution_df.iloc[0])
         population = rd.choices(initial_solution_set, k=self.POPULATION_SIZE)
 
-        fitness_history = []
-        iteration = 0
+        self.fitness_evolution = []
+        self.fitness_mean_evolution = []
 
-        while iteration < self.MAX_ITERATION and self.fitness_change(fitness_history):
+        iteration = 0
+        progress_bar = tqdm(desc='Genetic algorithm', total=self.MAX_ITERATION, colour='green')
+
+        while iteration < self.MAX_ITERATION and self.fitness_change():
             iteration += 1
-            print('iteration', iteration)
+
             """ Choose the individuals that survive from the previous generation """
             population_survivors = self.stochastic_selection(population)  # other methods available
             population = population_survivors
@@ -83,8 +86,8 @@ class GeneticAlgorithm:
                 mother = population[index + 1]
 
                 if rd.random() < self.PROBA_CROSSING:
-                    brother = self.pmx_cross_over(father, mother)  # other methods available
-                    sister = self.pmx_cross_over(father, mother)
+                    brother = self.order_cross_over(father, mother)  # other methods available
+                    sister = self.order_cross_over(father, mother)
 
                     population_crossed.append(brother)
                     population_crossed.append(sister)
@@ -114,14 +117,12 @@ class GeneticAlgorithm:
             for individual in population:
                 fitness_list.append(compute_fitness(individual, self.Graph))
 
-            fitness_mean = mean(fitness_list)
-            fitness_history.append(fitness_mean)
-
             index_min = argmin(fitness_list)
             self.solution = population[index_min]
+            self.fitness_evolution.append(fitness_list[index_min])
+            self.fitness_mean_evolution.append(mean(fitness_list))
 
-            message = 'Iteration {}, best fitness {}, mean fitness {}'
-            print(message.format(iteration, fitness_list[index_min], fitness_mean))
+            progress_bar.update(1)
 
         self.fitness = compute_fitness(self.solution, self.Graph)
         plot_solution(self.solution, self.Graph)
@@ -193,34 +194,43 @@ class GeneticAlgorithm:
     -------
     """
 
-    def pmx_cross_over(self, father, mother):
-        point = rd.randint(0, len(father))
+    @staticmethod
+    def pmx_cross_over(father, mother):
+        return father
 
-        embryo = [father[point], mother[point]]
+    @staticmethod
+    def order_cross_over(father, mother):
+        point = rd.randint(0, len(father) - 1)
+        visited_customers = []
         children = []
 
-        customers_visited = []
-        customers_not_visited = [index for index in range(1, len(self.Graph))]
-
         for index_delivery in range(len(father)):
-            delivery = embryo[index_delivery]
-            children.append([0])
+            if index_delivery == point:
+                continue
 
-            for index_customer in range(1, len(delivery) - 1):
+            delivery = father[index_delivery]
+            children.append([])
+
+            for index_customer in range(len(delivery)):
+                customer = delivery[index_customer]
+                children[-1].append(customer)
+
+                if customer != 0:
+                    visited_customers.append(customer)
+
+        children.append([0])
+
+        for index_delivery in range(len(mother)):
+            delivery = mother[index_delivery]
+
+            for index_customer in range(len(delivery)):
                 customer = delivery[index_customer]
 
-                if customer in customers_visited:
-                    if len(customers_not_visited) > 0:
-                        random_index = rd.randint(0, len(customers_not_visited) - 1)
-                        new_customer = customers_not_visited.pop(random_index)
-                        customers_visited.append(new_customer)
-                        children[-1].append(new_customer)
-                else:
-                    customers_visited.append(customer)
-                    customers_not_visited.pop(customers_not_visited.index(customer))
+                if customer not in visited_customers and customer != 0:
                     children[-1].append(customer)
+                    visited_customers.append(customer)
 
-            children[-1].append(0)
+        children[-1].append(0)
 
         return children
 
@@ -286,9 +296,8 @@ class GeneticAlgorithm:
     ----------
     """
 
-    @staticmethod
-    def fitness_change(history):
-        if len(history) < 5:
+    def fitness_change(self):
+        if len(self.fitness_evolution) < 5:
             return True
 
-        return history[-1] != history[-2] or history[-1] != history[-3]
+        return self.fitness_evolution[-1] != self.fitness_evolution[-2] or self.fitness_evolution[-1] != self.fitness_evolution[-3]

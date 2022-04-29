@@ -1,7 +1,6 @@
 """ Import librairies """
 import random as rd
 
-""" Import SMA """
 from sma import ModelSma
 
 
@@ -19,8 +18,8 @@ class Scenarios:
     """
 
     @staticmethod
-    def no_interaction(nbr_of_iteration=2, speedy=True):
-        model_sma = ModelSma(nbr_of_genetic=1, nbr_of_tabou=1, nbr_of_recuit=0, speedy=True)
+    def no_interaction(nbr_of_iteration=2):
+        model_sma = ModelSma(nbr_of_genetic=2, nbr_of_tabou=1, nbr_of_recuit=0)
 
         for iteration in range(nbr_of_iteration):
             model_sma.step()
@@ -45,8 +44,8 @@ class Scenarios:
         model_sma = ModelSma(nbr_of_genetic=1, nbr_of_tabou=1, nbr_of_recuit=0)
 
         for iteration in range(nbr_of_iteration):
-            if len(model_sma.Pool.pool) > 0:
-                solution = [model_sma.Pool.pool[0]]
+            if len(model_sma.Pool.solution_list) > 0:
+                solution = [model_sma.Pool.solution_list[0]]
                 model_sma.step(solution)
 
             else:
@@ -72,8 +71,8 @@ class Scenarios:
         model_sma = ModelSma(nbr_of_genetic=1, nbr_of_tabou=1, nbr_of_recuit=0)
 
         for iteration in range(nbr_of_iteration):
-            if len(model_sma.Pool.pool) > 0:
-                solution_list = [model_sma.Pool.pool[index] for index in range(model_sma.nbr_of_agent)]
+            if len(model_sma.Pool.solution_list) > 0:
+                solution_list = [model_sma.Pool.solution_list[index] for index in range(model_sma.nbr_of_agent)]
                 model_sma.step(solution_list)
 
             else:
@@ -99,9 +98,9 @@ class Scenarios:
         model_sma = ModelSma(nbr_of_genetic=1, nbr_of_tabou=1, nbr_of_recuit=0)
 
         for iteration in range(nbr_of_iteration):
-            if len(model_sma.Pool.pool) > 0:
-                index_solution = rd.randint(0, len(model_sma.Pool.pool))
-                solution = [model_sma.Pool.pool[index_solution]]
+            if len(model_sma.Pool.solution_list) > 0:
+                index_solution = rd.randint(0, len(model_sma.Pool.solution_list))
+                solution = [model_sma.Pool.solution_list[index_solution]]
                 model_sma.step(solution)
 
             else:
@@ -128,10 +127,10 @@ class Scenarios:
 
         solution = []
         for iteration in range(nbr_of_iteration):
-            if len(model_sma.Pool.pool) > 0:
+            if len(model_sma.Pool.solution_list) > 0:
                 for index in range(model_sma.nbr_of_agent):
-                    i = rd.randint(0, len(model_sma.Pool.pool) - 1)
-                    solution_i = model_sma.Pool.pool[i]
+                    i = rd.randint(0, len(model_sma.Pool.solution_list) - 1)
+                    solution_i = model_sma.Pool.solution_list[i]
                     solution.append(solution_i)
                 model_sma.step(solution)
 

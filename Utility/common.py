@@ -73,7 +73,7 @@ distance :float - the distance between the 2 points
 
 def compute_plan_distance(pos_1: tuple, pos_2: tuple) -> float:
     x_1, x_2, y_1, y_2 = pos_1[0], pos_2[0], pos_1[1], pos_2[1]
-    distance = sqrt((x_1 - x_2) ** 2 + (y_1 - y_2) ** 2) / 1000
+    distance = sqrt((x_1 - x_2) ** 2 + (y_1 - y_2) ** 2)
 
     return distance
 
@@ -113,14 +113,41 @@ def compute_fitness(solution: list, graph) -> float:
             summit_to = delivery[index_summit + 1]
 
             if summit_from == summit_to:
-                print('solution', solution)
-                print('delivery', delivery)
-                print('customer', summit_from)
+                print('Error : two consecutive nodes are equal')
+
             delivery_distance += graph[summit_from][summit_to]['weight']
 
         solution_cost += delivery_distance * cost_by_distance 
 
     return solution_cost
+
+
+"""
+Define Gini
+
+Parameters
+----------
+model: ModelSma - the model gathering the agents containing the metaheuristics
+----------
+
+Returns 
+-------
+gini: float - the gini score
+-------
+"""
+
+
+def compute_gini(model) -> float:
+    agents_fitness = sorted([agent.fitness for agent in model.schedule.agents])
+
+    total_fitness = sum(agents_fitness)
+
+    A = model.nbr_of_agent * total_fitness
+    B = sum(fitness * (model.nbr_of_agent - index) for index, fitness in enumerate(agents_fitness))
+
+    gini = 1 + (1 / model.nbr_of_agent) - 2 * A / B
+
+    return gini
 
 
 """
@@ -143,7 +170,10 @@ def create_graph(df_customers, df_vehicles, vehicle_speed=50):
 
     graph = nx.empty_graph(nbr_of_summit + 1)  # we add one for the depot
 
-    (x_0, y_0) = utm.from_latlon(43.37391833, 17.60171712)[:2]
+    pos_depot = utm.from_latlon(43.37391833, 17.60171712)[:2]
+    depot_x = pos_depot[0] / (10 ** 3)
+    depot_y = pos_depot[1] / (10 ** 3)
+
     depot_dict = {
         'CUSTOMER_CODE': 0,
         'CUSTOMER_LATITUDE': 43.37391833,
@@ -151,7 +181,7 @@ def create_graph(df_customers, df_vehicles, vehicle_speed=50):
         'CUSTOMER_TIME_WINDOW_FROM_MIN': 360,
         'CUSTOMER_TIME_WINDOW_TO_MIN': 1080,
         'TOTAL_WEIGHT_KG': 0,
-        'pos': (x_0, y_0),
+        'pos': (depot_x, depot_y),
         'CUSTOMER_DELIVERY_SERVICE_TIME_MIN': 0,
         'INDEX': 0,
     }
@@ -173,9 +203,8 @@ def create_graph(df_customers, df_vehicles, vehicle_speed=50):
         longitude = customer_dict['CUSTOMER_LONGITUDE']
 
         pos = utm.from_latlon(latitude, longitude)[:2]
-        pos_x = pos[0] / 1000
-        pos_y = pos[1] / 1000
-
+        pos_x = pos[0] / (10 ** 3)
+        pos_y = pos[1] / (10 ** 3)
         customer_dict['pos'] = (pos_x, pos_y)
 
         graph.nodes[customer_dict['INDEX']].update(customer_dict)

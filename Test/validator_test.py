@@ -1,23 +1,21 @@
-""" Import class """
-from Metaheuristics.SimulatedAnnealing.recuit_classe import *
+""" Import librairies """
+import unittest
 
-database = Database(vehicle_speed=5000)
-graph = database.Graph
-
-
-def test_pkl_solutions():
-    initial_solution_df_path = join('Dataset', 'Initialized', 'ordre_50_it.pkl')
-    initial_solution_df = pd.read_pickle(initial_solution_df_path)
-    initial_solution_set = list(initial_solution_df.iloc[0])
-
-    for index in range(len(initial_solution_set)):
-        solution = initial_solution_set[index]
-        flag = is_solution_valid(solution, graph)
-        print('solution valid ? ', flag)
+from Utility.database import Database
+from Utility.validator import *
 
 
-def test_annealing_init():
-    annealing = Annealing()
-    solution = annealing.generate_initial_solution()
-    flag = is_solution_valid(solution, annealing.Graph)
-    print('solution valid ? ', flag)
+class TestValidator(unittest.TestCase):
+    def setUpClass(self) -> None:
+        self.Database = Database()
+        self.Graph = self.Database.Graph
+
+    def test_is_solution_shape_valid(self):
+        valid_solution = [[0, 1, 0], [0, 2, 3, 0]]
+        invalid_solution = [[1, 0]]
+
+        message = 'should valid the shape of a valid solution'
+        self.assertTrue(is_solution_shape_valid(valid_solution, self.Graph), message)
+
+        message = 'should not valid the shape of an invalid solution'
+        self.assertFalse(is_solution_shape_valid(invalid_solution, self.Graph), message)

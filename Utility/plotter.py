@@ -73,23 +73,18 @@ filepath: string - a path where to save the plotted image
 
 
 def plot_solution(solution, graph, title='Solution to the VRP', filepath=None):
+    plt.figure(figsize=[10, 7])
+
     colors = color_palette(n_colors=len(solution))
 
     for index_delivery in range(len(solution)):
         delivery = solution[index_delivery]
 
-        list_x = []
-        list_y = []
+        list_x = [graph.nodes[index_customer]['pos'][0] for index_customer in delivery]
+        list_y = [graph.nodes[index_customer]['pos'][1] for index_customer in delivery]
 
-        for index in range(len(delivery)):
-            index_customer = delivery[index]
-            customer = graph.nodes[index_customer]
-
-            x, y = utm.from_latlon(customer['CUSTOMER_LATITUDE'], customer['CUSTOMER_LONGITUDE'])[:2]
-            list_x.append(x)
-            list_y.append(y)
-
-        label = graph.nodes[0]['Vehicles']["VEHICLE_VARIABLE_COST_KM"][index_delivery]
+        vehicle_cost = graph.nodes[0]['Vehicles']["VEHICLE_VARIABLE_COST_KM"][index_delivery]
+        label = 'Vehicle n°{} cost : {}'.format(index_delivery, vehicle_cost)
 
         plt.plot(list_x, list_y, label=label, marker='o', markerfacecolor='blue',
                  markeredgecolor='blue', markersize=0.8, linestyle='solid', linewidth=0.7,
@@ -97,8 +92,7 @@ def plot_solution(solution, graph, title='Solution to the VRP', filepath=None):
                  )
 
     depot = graph.nodes[0]
-    x, y = utm.from_latlon(depot['CUSTOMER_LATITUDE'], depot['CUSTOMER_LONGITUDE'])[:2]
-    plt.plot(x, y, 'rs', markersize=0.9)
+    plt.plot(depot['pos'][0], depot['pos'][1], 'rs', markersize=0.9)
 
     plt.xlabel('coordinate x (in km)')
     plt.ylabel('coordinate y (in km)')

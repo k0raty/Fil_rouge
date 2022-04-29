@@ -1,8 +1,8 @@
 """ Import librairies """
 import random as rd
 from copy import deepcopy
+from tqdm import tqdm
 
-""" Import utilities """
 from Utility.common import generate_initial_solution, set_root_dir, compute_fitness
 from Utility.validator import is_solution_valid, pick_valid_solution
 from Utility.plotter import plot_solution
@@ -12,14 +12,12 @@ set_root_dir()
 
 
 class Tabou:
-    MAX_ITERATION = 10
     MAX_NEIGHBORS = 20
-
-    VEHICLE_CAPACITY = 5000
+    tabou_list = []
 
     fitness: float = 0
+    fitness_evolution: list = []
     solution: list = []
-    tabou_list: list = []
 
     """
     Initialize the genetic algorithm with proper parameters and problem's data
@@ -33,13 +31,14 @@ class Tabou:
     ----------
     """
 
-    def __init__(self, graph=None, vehicle_speed=40):
+    def __init__(self, graph=None, max_iteration=20):
         if graph is None:
-            database = Database(vehicle_speed)
+            database = Database()
             graph = database.Graph
 
         self.Graph = graph
 
+        self.MAX_ITERATION = max_iteration
         self.NBR_OF_CUSTOMER = len(graph) - 1
         self.NBR_OF_VEHICLE = len(graph.nodes[0]['Vehicles'])
 
@@ -58,29 +57,25 @@ class Tabou:
     -------
     """
 
-    def main(self, initial_solution=None, speedy=False):
+    def main(self, initial_solution=None):
         if initial_solution is None:
-            iteration = 0
-            initial_solution = self.initialisation()
+            initial_solution = generate_initial_solution(self.Graph)
 
-            while not is_solution_valid(initial_solution, self.Graph) and iteration < 5:
-                initial_solution = self.initialisation()
-                iteration += 1
-
-            if iteration == 5:
+            if not is_solution_valid(initial_solution, self.Graph):
                 initial_solution = pick_valid_solution()
 
-        plot_solution(initial_solution, self.Graph, title='Initial solution to the VRP')
+        self.solution, self.fitness = self.find_best_neighbor(initial_solution)
+        self.fitness_evolution = [self.fitness]
+        self.tabou_list = []
 
-        solution, fitness = self.find_best_neighbor(initial_solution)
+        iteration = 0
+        progress_bar = tqdm(desc='Tabou algorithm', total=self.MAX_ITERATION, colour='green')
 
-        for iteration in range(self.MAX_ITERATION):
-            solution, fitness = self.find_best_neighbor(solution)
+        while iteration < self.MAX_ITERATION:
+            self.solution, self.fitness = self.find_best_neighbor(self.solution)
+            self.fitness_evolution.append(self.fitness)
 
-            print('Iteration {}, fitness {}'.format(iteration, fitness))
-
-        self.solution = solution
-        self.fitness = fitness
+            progress_bar.update(1)
 
         plot_solution(self.solution, self.Graph)
 
@@ -159,17 +154,3 @@ class Tabou:
             inversion_couple = (index_delivery_i, index_delivery_j, summit_i, summit_j)
 
         return neighbor, inversion_couple
-
-    """
-    Generate an initial valid solution taking into account the time and weigh constraints 
-    
-    Returns
-    -------
-    solution: list - a solution of the problem containing all the deliveries to be done
-    -------
-    """
-
-    def initialisation(self):
-        solution = generate_initial_solution(self.Graph)
-
-        return solution

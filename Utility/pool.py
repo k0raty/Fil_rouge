@@ -2,17 +2,16 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
-""" Import utilities """
 from Utility.common import compute_fitness
 
 
 class Pool:
-    pool = []
+    solution_list = []
 
-    def __init__(self, graph, pool_max_size=10, pr=10):
+    def __init__(self, graph, pool_size=10, pr=10):
         self.Graph = graph
         self.PR = pr
-        self.POOL_MAX_SIZE = pool_max_size
+        self.POOL_SIZE = pool_size
 
     """
     Compute the lambda parameter of 2 solutions
@@ -89,17 +88,17 @@ class Pool:
     """
 
     def inject_in_pool(self, new_solution, new_fitness):
-        pool_occupation = len(self.pool)
+        pool_occupation = len(self.solution_list)
 
-        if pool_occupation < self.POOL_MAX_SIZE:
-            self.pool.append(new_solution)
+        if pool_occupation < self.POOL_SIZE:
+            self.solution_list.append(new_solution)
             return
 
         index_candidate = -1
         fitness_candidate = np.inf
 
         for index_solution in range(pool_occupation):
-            solution = self.pool[index_solution]
+            solution = self.solution_list[index_solution]
 
             fitness = compute_fitness(solution, self.Graph)
 
@@ -116,16 +115,16 @@ class Pool:
                 fitness_candidate = fitness
 
         if index_candidate > -1:
-            self.pool[index_candidate] = new_solution
-            self.pool = sorted(self.pool, key=lambda x: compute_fitness(x, self.Graph))
+            self.solution_list[index_candidate] = new_solution
+            self.solution_list = sorted(self.solution_list, key=lambda x: compute_fitness(x, self.Graph))
 
     """ Trace le graphe représentant la distance des solutions contenues dans S à la solution L """
 
     def graph(self, new_solution):
-        pool_occupation = len(self.pool)
+        pool_occupation = len(self.solution_list)
 
         X = [1 for i in range(pool_occupation)]
-        Y = [self.count_non_shared_arc(new_solution, self.pool[i]) for i in range(pool_occupation)]
+        Y = [self.count_non_shared_arc(new_solution, self.solution_list[i]) for i in range(pool_occupation)]
 
         plt.scatter(X, Y, s=100, alpha=0.5)
         plt.scatter(1, 0, s=150, c='red')
