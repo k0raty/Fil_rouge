@@ -1,7 +1,6 @@
 """ Import librairies """
 import random as rd
 
-
 """
 Switch 2 random customers on the same random delivery
 
@@ -26,7 +25,7 @@ def intra_route_swap(solution):
 
     while index_customer_1 == index_customer_2:
         index_customer_2 = rd.randint(1, len(delivery) - 1)
-    
+
     customer_1 = solution[index_delivery][index_customer_1]
     customer_2 = solution[index_delivery][index_customer_2]
 
@@ -57,7 +56,7 @@ def inter_route_swap(solution):
 
     index_customer_1 = rd.randint(1, len(delivery_1) - 2)
     index_customer_2 = rd.randint(1, len(delivery_2) - 2)
-    
+
     customer_1 = solution[index_delivery_1][index_customer_1]
     customer_2 = solution[index_delivery_2][index_customer_2]
 
@@ -66,29 +65,30 @@ def inter_route_swap(solution):
 
     return solution
 
-def IntraRouteShift(solution):
+
+def intra_route_shift(solution):
     """ Déplacement d'un client vers une autre position sur la même route """
     # On récupère une route au hasard
-    nb_road = rd.randrange(0,len(solution),1)
+    nb_road = rd.randrange(0, len(solution), 1)
     road = solution[nb_road].copy()
 
     # On récupère un client au hasard et son nouvel indice
-    nb_client = rd.randrange(1,len(road)-1,1)
-    new_index = rd.randrange(1,len(road)-1,1)
-    while nb_client == new_index :
-        new_index = rd.randrange(1,len(road)-1,1)
-    
+    nb_client = rd.randrange(1, len(road) - 1, 1)
+    new_index = rd.randrange(1, len(road) - 1, 1)
+    while nb_client == new_index:
+        new_index = rd.randrange(1, len(road) - 1, 1)
+
     # On procède au déplacement du client
     new_road = []
     road.pop(nb_client)  # on crée une route auxiliaire sans le client à déplacer
     i = 0
-    while i != new_index :
+    while i != new_index:
         new_road.append(road[0])
         road.pop(0)
         i += 1
     client = solution[nb_road][nb_client]
-    new_road.append(client)   # on ajoute le client déplacé
-    while road != []:
+    new_road.append(client)  # on ajoute le client déplacé
+    while len(road) > 0:
         new_road.append(road[0])
         road.pop(0)
     solution[nb_road] = new_road
@@ -142,7 +142,7 @@ def two_intra_route_swap(solution):
         index_customer_3 = rd.randint(1, len(delivery) - 3)
 
     index_customer_4 = index_customer_3 + 1
-    
+
     customer_1 = delivery[index_customer_1]
     customer_2 = delivery[index_customer_2]
     customer_3 = delivery[index_customer_3]
@@ -172,7 +172,7 @@ def two_intra_route_shift(solution):
 
     while abs(new_index_customer - index_customer) < 2:
         new_index_customer = rd.randint(1, len(delivery) - 2)
-    
+
     solution[index_delivery].insert(new_index_customer, customer_2)
     solution[index_delivery].insert(new_index_customer, customer_1)
 
@@ -197,7 +197,7 @@ def remove_smallest_road(solution):
         if delivery_length < smallest_length:
             smallest_index = index_delivery
             smallest_length = delivery_length
-    
+
     smallest_delivery = solution.pop(smallest_index)
     smallest_delivery = smallest_delivery[1: smallest_length - 1]
 
@@ -223,10 +223,10 @@ def remove_random_road(solution):
         return solution
 
     index_delivery_to_remove = rd.randint(0, len(solution) - 1)
-    
+
     delivery_to_remove = solution.pop(index_delivery_to_remove)
     delivery_to_remove = delivery_to_remove[1: len(delivery_to_remove) - 1]
-    
+
     while len(delivery_to_remove) > 0:
         index_delivery = rd.randint(0, len(solution) - 1)
 
@@ -263,7 +263,7 @@ def perform_action(index_action, solution):
         return inter_route_swap(solution)
 
     elif index_action == 2:
-        return IntraRouteShift(solution)
+        return intra_route_shift(solution)
 
     elif index_action == 3:
         return inter_route_shift(solution)

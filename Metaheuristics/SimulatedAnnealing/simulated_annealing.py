@@ -1,12 +1,14 @@
 """ Import librairies """
 import copy
-import math
 import warnings
 import matplotlib.pyplot as plt
+from tqdm import tqdm
+import numpy as np
+import random as rd
 
 from Utility.database import Database
-from Utility.common import *
-from Utility.validator import *
+from Utility.common import set_root_dir, generate_initial_solution, compute_fitness, compute_delivery_fitness
+from Utility.validator import is_solution_valid, pick_valid_solution
 from Utility.plotter import plot_solution
 
 set_root_dir()
@@ -75,18 +77,13 @@ class Annealing:
     """
 
     def main(self, initial_solution=None):
-        ordre_init_path = os.path.join('Metaheuristics', 'SimulatedAnnealing', 'df_ordre_init.pkl')
-        df = pd.read_pickle(ordre_init_path)
-
-        initial_solution = list(df['Ordre'])
-
-        print("Initialisation de la solution \n")
-
         if initial_solution is None:
             solution = generate_initial_solution(self.Graph)
 
-        else:
-            solution = initial_solution
+            if not is_solution_valid(solution, self.Graph):
+                initial_solution = pick_valid_solution()
+
+        solution = initial_solution
 
         plot_solution(solution, graph=self.Graph, title='initial solution')
 
@@ -95,7 +92,7 @@ class Annealing:
         solution = self.recuit_simule(solution, self.Graph, self.T, self.speedy)
 
         self.solution = solution
-        self.fitness = energie(self.solution, self.Graph)
+        self.fitness = compute_fitness(self.solution, self.Graph)
 
         plot_solution(self.solution, graph=self.Graph)
 
@@ -105,7 +102,7 @@ class Annealing:
         solution = self.perturbation_intra(solution, self.Graph, self.Speedy)
 
         self.solution = solution
-        self.fitness = energie(self.solution, self.Graph)
+        self.fitness = compute_fitness(self.solution, self.Graph)
 
         plot_solution(self.solution, graph=self.Graph)
 
@@ -117,7 +114,7 @@ class Annealing:
 
     @staticmethod
     def compute_temperature(energy, initial_energy):
-        temperature = 1500 / math.log(initial_energy - energy)
+        temperature = 1500 / np.log(initial_energy - energy)
         return temperature
 
     """
@@ -143,14 +140,12 @@ class Annealing:
     """
 
     def recuit_simule(self, solution, graph, temperature, speedy):
-        is_solution_shape_valid(solution, graph)
-        is_solution_time_valid(solution, graph)
-        is_solution_capacity_valid(solution, graph)
+        assert (is_solution_valid(solution, graph) is True), 'solution should be valid'
 
         it = 0
         k = 10e-5  # arbitraire
         nb_sommet = len(graph.nodes)
-        E = energie(solution, graph)
+        E = compute_fitness(solution, graph)
         E0 = E + 2
         best_x = copy.deepcopy(solution)  # La meilleure solution trouvée lors de toute les perturbation
         T_list = [temperature]
@@ -202,11 +197,12 @@ class Annealing:
 
                     ###On compare l'énergie (seulement une partie) de notre solution perturbé avec la précédente solution###
                     if camion_ajout != camion_retire:
-                        E1, E2, E3, E4 = energie_part(solution[camion_ajout], graph, camion_ajout), energie_part(solution[camion_retire],
-                                                                                                                 graph,
-                                                                                                                 camion_retire), energie_part(
-                            very_old_x[camion_ajout], graph, camion_ajout), energie_part(very_old_x[camion_retire], graph,
-                                                                                         camion_retire)
+                        E1, E2, E3, E4 = compute_delivery_fitness(solution[camion_ajout], graph,
+                                                                  camion_ajout), compute_delivery_fitness(
+                            solution[camion_retire], graph, camion_retire), compute_delivery_fitness(
+                            very_old_x[camion_ajout], graph,
+                            camion_ajout), compute_delivery_fitness(
+                            very_old_x[camion_retire], graph, camion_retire)
 
                         ###Principe du recuit###
                         if (E1 + E2 >= E3 + E4):
@@ -214,25 +210,25 @@ class Annealing:
                             r = rd.random()
 
                             if r <= p and p != 1:  # Si p fait 1 , cela ralentit énormément.
-                                if not is_solution_valid(solution, graph) :
+                                if not is_solution_valid(solution, graph):
                                     solution = copy.deepcopy(very_old_x)  # sinon on conserve x tel qu'il est
-                                #else :
-                                    ###Assertion non trop coûteuse mais efficace pour vérifier que notre solution est modifiée comme voulue###
-                                   # assert (len(solution[camion_ajout]) == len(very_old_x[camion_ajout]) + 1)
-                                   # assert (len(solution[camion_retire]) == len(very_old_x[camion_retire]) - 1)
-                            else :
+                                # else :
+                                ###Assertion non trop coûteuse mais efficace pour vérifier que notre solution est modifiée comme voulue###
+                                # assert (len(solution[camion_ajout]) == len(very_old_x[camion_ajout]) + 1)
+                                # assert (len(solution[camion_retire]) == len(very_old_x[camion_retire]) - 1)
+                            else:
                                 solution = copy.deepcopy(very_old_x)
 
                         else:
-                            #if (is_delivery_capacity_valid(graph, solution[camion_ajout], Q[camion_ajout]) == False or check_temps_part(
-                                    #solution[camion_ajout], graph) == False):
-                               #solution = copy.deepcopy(very_old_x)
-                            #else:
-                            E = energie(solution, graph)
+                            # if (is_delivery_capacity_valid(graph, solution[camion_ajout], Q[camion_ajout]) == False or check_temps_part(
+                            # solution[camion_ajout], graph) == False):
+                            # solution = copy.deepcopy(very_old_x)
+                            # else:
+                            E = compute_fitness(solution, graph)
                             if E < E_min:
                                 ###Assertion non trop coûteuse mais efficace pour vérifier que notre solution est modifiée comme voulue###
-                                #assert (len(solution[camion_ajout]) == len(very_old_x[camion_ajout]) + 1)
-                                #assert (len(solution[camion_retire]) == len(very_old_x[camion_retire]) - 1)
+                                # assert (len(solution[camion_ajout]) == len(very_old_x[camion_ajout]) + 1)
+                                # assert (len(solution[camion_retire]) == len(very_old_x[camion_retire]) - 1)
                                 best_x = copy.deepcopy(
                                     solution)  # On garde en mémoire le meilleur x trouvé jusqu'à présent
                                 E_min = E
@@ -244,7 +240,7 @@ class Annealing:
             num_very_old_x = sum([len(i) for i in very_old_x])
             num_x = sum([len(i) for i in solution])  # On vérifie qu'aucun sommet n'a été oublié
             assert (num_very_old_x == num_x)
-            E = energie(best_x, graph)
+            E = compute_fitness(best_x, graph)
 
             if speedy:
                 print("Mode speed_run \n")
@@ -287,7 +283,7 @@ class Annealing:
 
     @staticmethod
     def perturbation_intra(solution, graph, speedy):
-        d = energie(solution, graph)
+        d = compute_fitness(solution, graph)
         d0 = d + 1
         iteration = 1
         list_E = [d]
@@ -302,20 +298,18 @@ class Annealing:
 
                 for i in range(1, len(route) - 1):
                     for j in range(i + 2, len(route)):
-                        d_part = energie_part(route, graph, camion)
+                        d_part = compute_delivery_fitness(route, graph, camion)
                         r = route[i:j].copy()
                         r.reverse()
                         route2 = route[:i] + r + route[j:]
-                        t = energie_part(route2, graph, camion)
+                        t = compute_delivery_fitness(route2, graph, camion)
 
                         if (t < d_part):
-                            #if check_temps_part(route2, graph) == True:
+                            # if check_temps_part(route2, graph) == True:
                             solution[camion] = route2
 
-            d = energie(solution, graph)
+            d = compute_fitness(solution, graph)
             list_E.append(d)
-
-            is_solution_time_valid(solution, graph)
 
             if speedy:
                 break

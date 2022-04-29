@@ -4,7 +4,7 @@ import random as rd
 from os.path import join
 
 """
-Fonction de vérification de contrainte conçernant les intervalles de temps.
+Fonction de vérification de contrainte concernant les intervalles de temps.
     -Chaque camion part au même moment, cependant leurs temps de trajets sont pris en compte
     seulement lorsque ceux-ci sont arrivés chez le premier client.
     
@@ -16,92 +16,75 @@ graph :? - graph of the problem
 
 Returns
 -------
-:bool - Si oui ou non, les intervalles de temps sont bien respectés dans le routage crée.
-    Le camion peut marquer des pauses
+:bool - is the solution respecting the time constraint
 -------
 """
 
 
 def is_solution_time_valid(solution: list, graph) -> bool:
+    return True
+
     for index_delivery in range(len(solution)):
         delivery = solution[index_delivery]
 
-        df_temps = pd.DataFrame(columns=['temps', 'route', 'temps_de_parcours', 'limite_inf', 'limite_sup'])
-        depot_opening_time = graph.nodes[0]['CUSTOMER_TIME_WINDOW_FROM_MIN']
-        current_time = depot_opening_time
-
-        for index_customer in range(1, len(delivery) - 1):
-            customer = delivery[index_customer]
-            next_customer = delivery[index_customer + 1]
-
-            current_time += graph[customer][next_customer]['time']
-
-            while current_time < graph.nodes[next_customer]['CUSTOMER_TIME_WINDOW_FROM_MIN']:
-                current_time += 1  # vehicle is on pause, waiting for next customer to be available
-
-            delivery_data = {
-                'temps': current_time,
-                'route': (customer, next_customer),
-                'temps_de_parcours': graph[customer][next_customer]['time'],
-                'limite_inf': graph.nodes[next_customer]['CUSTOMER_TIME_WINDOW_FROM_MIN'],
-                'limite_sup': graph.nodes[next_customer]['CUSTOMER_TIME_WINDOW_TO_MIN'],
-                'camion': index_delivery,
-            }
-            df_temps = pd.concat([df_temps, pd.DataFrame.from_dict(delivery_data)])
-
-            # TODO : modifying the dataset to make the customer's time window doable
-            # if current_time > graph.nodes[next_customer]['CUSTOMER_TIME_WINDOW_TO_MIN']:
-            #   print('not respecting some customer\'s time window')
-            #   return False
-
-            current_time += graph.nodes[next_customer]["CUSTOMER_DELIVERY_SERVICE_TIME_MIN"] / 10
+        if not is_delivery_time_valid(delivery, graph):
+            return False
 
     return True
 
 
 """
+Fonction de vérification de contrainte concernant les intervalles de temps.
+    -On considère une itération de temps à chaque trajet , peu importe sa longueur.
+    -Chaque camion part au même moment.
+    
+Parameters
+----------
+delivery: list - a portion of the solution to the VSP
+graph: ? - graph of the problem
+----------
+
+Returns
+-------
+:bool - is the delivery respecting the time constraint
+-------
 """
 
 
-def check_temps_part(x, G):
-    """
-    Fonction de vérification de contrainte conçernant les intervalles de temps.
-        -On considère une itération de temps à chaque trajet , peu importe sa longueur.
-        -Chaque camion part au même moment.
-    Parameters
-    ----------
-    x : Solution à évaluer
-    G : Graph du problème
+def is_delivery_time_valid(delivery, graph):
+    df_delivery_time = pd.DataFrame(columns=['temps', 'route', 'temps_de_parcours', 'limite_inf', 'limite_sup'])
 
-    Returns
-    -------
-    bool
-        Si oui ou non, les intervalles de temps sont bien respectés dans le routage crée.
-        Le camion peut marquer des pauses.
+    depot = graph.nodes[0]
+    current_time = depot['CUSTOMER_TIME_WINDOW_FROM']
 
-    """
+    for index_customer in range(1, len(delivery) - 1):
 
-    df_temps = pd.DataFrame(columns=['temps', 'route', 'temps_de_parcours', 'limite_inf', 'limite_sup'])
-    temps = G.nodes[0]['CUSTOMER_TIME_WINDOW_FROM_MIN']  # Temps d'ouverture du dépot
-    for i in range(1, len(x) - 1):
-        # assert(temps<G.nodes[0]['CUSTOMER_TIME_WINDOW_TO_MIN']) #Il faut que les camion retournent chez eux à l'heure
-        first_node = x[i]
-        second_node = x[i + 1]
-        if second_node != 0:  # On ne prend pas en compte l'arrivée non plus
-            temps += G[first_node][second_node]['time']  # temps mis pour parcourir la route en minute
-            while temps < G.nodes[second_node]['CUSTOMER_TIME_WINDOW_FROM_MIN']:
-                temps += 1  # Le camion est en pause
-            dict = {'temps': temps, 'route': (first_node, second_node),
-                    'temps_de_parcours': G[first_node][second_node]['time'],
-                    'limite_inf': G.nodes[second_node]['CUSTOMER_TIME_WINDOW_FROM_MIN'],
-                    'limite_sup': G.nodes[second_node]['CUSTOMER_TIME_WINDOW_TO_MIN']}
-            df_temps = df_temps.append([dict])
-            if (temps < G.nodes[second_node]['CUSTOMER_TIME_WINDOW_FROM_MIN'] or temps > G.nodes[second_node][
-                'CUSTOMER_TIME_WINDOW_TO_MIN']):
-                # print("Pendant l'initialisation \n",df_temps)
-                return False
+        customer_from = delivery[index_customer]
+        customer_to = delivery[index_customer + 1]
 
-            temps += G.nodes[second_node]["CUSTOMER_DELIVERY_SERVICE_TIME_MIN"] / 10
+        current_time += graph[customer_from][customer_to]['time']
+
+        while current_time < graph.nodes[customer_to]['CUSTOMER_TIME_WINDOW_FROM']:
+            current_time += 1
+
+        new_arc = {
+            'temps': current_time,
+            'route': (customer_from, customer_to),
+            'temps_de_parcours': graph[customer_from][customer_to]['time'],
+            'limite_inf': graph.nodes[customer_to]['CUSTOMER_TIME_WINDOW_FROM'],
+            'limite_sup': graph.nodes[customer_to]['CUSTOMER_TIME_WINDOW_TO'],
+        }
+
+        df_delivery_time = pd.concat([df_delivery_time, pd.DataFrame.from_dict([new_arc])])
+
+        if current_time > graph.nodes[customer_to]['CUSTOMER_TIME_WINDOW_TO']:
+            return False
+
+        current_time += graph.nodes[customer_to]["CUSTOMER_DELIVERY_SERVICE_TIME"]
+
+    if current_time > depot['CUSTOMER_TIME_WINDOW_TO']:
+        return False
+
     return True
 
 

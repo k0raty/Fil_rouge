@@ -8,9 +8,8 @@ from copy import deepcopy
 from tqdm import tqdm
 import pandas as pd
 
-""" Import utilities """
 from Utility.tsp_solver import solve_tsp
-from Utility.validator import is_solution_capacity_valid, is_solution_time_valid, is_solution_shape_valid, check_temps_part
+from Utility.validator import is_delivery_time_valid, is_solution_valid
 from Utility.plotter import plot_solution
 
 
@@ -96,30 +95,50 @@ fitness_score:float - value of the cost of this configuration
 
 
 def compute_fitness(solution: list, graph) -> float:
-    nbr_of_vehicle = len(solution)
+    fitness = 0
 
-    solution_cost = 0
+    for index_delivery in range(len(solution)):
+        fitness += compute_delivery_fitness(solution, graph, index_delivery)
 
-    for index_vehicle in range(nbr_of_vehicle):
-        cost_by_distance = graph.nodes[0]['Vehicles']['VEHICLE_VARIABLE_COST_KM'][index_vehicle]
+    return fitness
 
-        delivery_distance = 0
 
-        delivery = solution[index_vehicle]
-        nbr_of_summit = len(delivery)
+"""
+Fonction coût partielle pour le recuit qui calcule uniquement le coût d'un trajet uniquement
 
-        for index_summit in range(nbr_of_summit - 1):
-            summit_from = delivery[index_summit]
-            summit_to = delivery[index_summit + 1]
+Parameters
+----------
+solution: list - a solution to the VRP 
+graph: networkx.Graph - graph of the problem
+index_delivery: int - the index of the delivery of interest
+----------
 
-            if summit_from == summit_to:
-                print('Error : two consecutive nodes are equal')
+Returns
+-------
+delivery_fitness: float - the cost of the delivery
+-------
+"""
 
-            delivery_distance += graph[summit_from][summit_to]['weight']
 
-        solution_cost += delivery_distance * cost_by_distance 
+def compute_delivery_fitness(solution, graph, index_delivery):
+    delivery = solution[index_delivery]
 
-    return solution_cost
+    cost_by_distance = graph.nodes[0]['Vehicles']['VEHICLE_VARIABLE_COST_KM'][index_delivery]
+    distance = 0
+
+    # TODO: take into account the cost of going from and to the depot
+    for index_summit in range(1, len(delivery) - 2):
+        summit_from = delivery[index_summit]
+        summit_to = delivery[index_summit + 1]
+
+        if summit_from == summit_to:
+            print('Error : two consecutive nodes are equal')
+
+        distance += graph[summit_from][summit_to]['weight']
+
+    delivery_fitness = cost_by_distance * distance
+
+    return delivery_fitness
 
 
 """
@@ -142,10 +161,10 @@ def compute_gini(model) -> float:
 
     total_fitness = sum(agents_fitness)
 
-    A = model.nbr_of_agent * total_fitness
-    B = sum(fitness * (model.nbr_of_agent - index) for index, fitness in enumerate(agents_fitness))
+    part_a = model.nbr_of_agent * total_fitness
+    part_b = sum(fitness * (model.nbr_of_agent - index) for index, fitness in enumerate(agents_fitness))
 
-    gini = 1 + (1 / model.nbr_of_agent) - 2 * A / B
+    gini = 1 + (1 / model.nbr_of_agent) - 2 * part_a / part_b
 
     return gini
 
@@ -178,11 +197,11 @@ def create_graph(df_customers, df_vehicles, vehicle_speed=50):
         'CUSTOMER_CODE': 0,
         'CUSTOMER_LATITUDE': 43.37391833,
         'CUSTOMER_LONGITUDE': 17.60171712,
-        'CUSTOMER_TIME_WINDOW_FROM_MIN': 360,
-        'CUSTOMER_TIME_WINDOW_TO_MIN': 1080,
+        'CUSTOMER_TIME_WINDOW_FROM': 360,
+        'CUSTOMER_TIME_WINDOW_TO': 1080,
         'TOTAL_WEIGHT_KG': 0,
         'pos': (depot_x, depot_y),
-        'CUSTOMER_DELIVERY_SERVICE_TIME_MIN': 0,
+        'CUSTOMER_DELIVERY_SERVICE_TIME': 0,
         'INDEX': 0,
     }
 
@@ -262,19 +281,13 @@ def generate_initial_solution(graph, initial_order=None):
     message = 'There is not enough vehicles to achieve the deliveries in time, regardless the configuration'
     assert (graph.nodes[0]['NBR_OF_VEHICLE'] > graph.nodes[0]['n_min']), message
 
-    solution = []  # Notre première solution
-
-    for index_delivery in range(graph.nodes[0]['NBR_OF_VEHICLE']):
-        solution.append([0])
-
     customers = [node for node in graph.nodes]
     customers.pop(0)
-    # Initialisation du dataframe renseignant sur les sommets et leurs contraintes
 
     if initial_order is None:
         initial_order = solve_tsp(graph)
 
-        plot_solution([initial_order], graph, title='Solution to the TSP')
+        plot_solution([initial_order], graph, title='TSP solution')
 
     message = 'The initial order should start with 0 (the depot)'
     assert (initial_order[0] == 0), message
@@ -283,7 +296,7 @@ def generate_initial_solution(graph, initial_order=None):
     assert (total_customers_capacity <= total_vehicles_capacity), message
 
     # On remplit la solution de la majorité des sommets
-    df_camion = pd.DataFrame()  # Dataframe renseignant sur les routes, important pour la seconde phase de  remplissage
+    df_camion = pd.DataFrame()  # Dataframe renseignant sur les routes, important pour la seconde phase de remplissage
     df_camion.index = range(graph.nodes[0]['NBR_OF_VEHICLE'])
     vehicles_capacity = graph.nodes[0]['Vehicles']["VEHICLE_TOTAL_WEIGHT_KG"]
     ressources = [vehicles_capacity[i] for i in range(graph.nodes[0]['NBR_OF_VEHICLE'])]
@@ -293,109 +306,51 @@ def generate_initial_solution(graph, initial_order=None):
         'Vehicles',
         'Ressource_to_add',
         'Id',
-        'CUSTOMER_TIME_WINDOW_FROM_MIN',
-        'CUSTOMER_TIME_WINDOW_TO_MIN',
+        'CUSTOMER_TIME_WINDOW_FROM',
+        'CUSTOMER_TIME_WINDOW_TO',
         'Ressource_camion',
     ]
     df_initial_order = pd.DataFrame(columns=columns)
-    camion = 0
 
-    i = 1  # On ne prend pas en compte le zéros du début
-    with tqdm(total=len(initial_order)) as pbar:
-        while i < len(initial_order):
-            message = 'Not enough vehicles'
-            assert (camion < graph.nodes[0]['NBR_OF_VEHICLE']), message
+    solution = [[0] for index_delivery in range(graph.nodes[0]['NBR_OF_VEHICLE'])]
 
-            nodes_to_add = initial_order[i]
-            message = 'Given delivery goes back to depot'
-            assert (nodes_to_add != 0), message
+    index_delivery = 0
 
-            q_nodes = graph.nodes[nodes_to_add]['TOTAL_WEIGHT_KG']
-            int_min = graph.nodes[nodes_to_add]["CUSTOMER_TIME_WINDOW_FROM_MIN"]
-            int_max = graph.nodes[nodes_to_add]["CUSTOMER_TIME_WINDOW_TO_MIN"]
+    for index_customer in tqdm(initial_order):
+        message = 'should not require more vehicles than the given ones'
+        assert (index_delivery < graph.nodes[0]['NBR_OF_VEHICLE']), message
 
-            temp = deepcopy(solution[camion])
-            temp.append(nodes_to_add)
+        customer_capacity = graph.nodes[index_customer]['TOTAL_WEIGHT_KG']
+        int_min = graph.nodes[index_customer]["CUSTOMER_TIME_WINDOW_FROM"]
+        int_max = graph.nodes[index_customer]["CUSTOMER_TIME_WINDOW_TO"]
 
-            if df_camion.loc[camion]['Ressources'] >= q_nodes and check_temps_part(temp, graph):
-                Q = graph.nodes[0]['Vehicles']['VEHICLE_TOTAL_WEIGHT_KG'][camion]
-                message = 'Some customers have packages heavier than vehicles capacity'
-                assert (q_nodes <= Q), message
+        is_vehicle_big_enough = df_camion.loc[index_delivery]['Ressources'] >= customer_capacity
+        is_time_valid = is_delivery_time_valid(solution[index_delivery], graph)
 
-                solution[camion].append(nodes_to_add)
-                df_camion['Ressources'].loc[camion] += -q_nodes
-                i += 1
-                pbar.update(1)
-                assert (solution[camion] == temp)
-            else:
-                print(nodes_to_add)
-                assert (solution[camion] != temp)
-                camion += 1
+        if is_vehicle_big_enough and is_time_valid:
+            message = 'should not have customer order heavier than vehicle capacity'
+            assert (customer_capacity <= vehicles_capacity[index_delivery]), message
 
-            df_initial_order = df_initial_order.append([{
-                'Vehicles': camion,
-                "Ressource_to_add": q_nodes,
-                "Id": nodes_to_add,
-                "CUSTOMER_TIME_WINDOW_FROM_MIN": int_min,
-                "CUSTOMER_TIME_WINDOW_TO_MIN": int_max,
-                "Ressource_camion": df_camion.loc[camion]['Ressources'],
-            }])
+            solution[index_delivery].append(index_customer)
+
+            df_camion['Ressources'].loc[index_delivery] -= customer_capacity
+
+        else:
+            index_delivery += 1
+
+        dict_camion = {
+            'Vehicles': index_delivery,
+            "Ressource_to_add": customer_capacity,
+            "Id": index_customer,
+            "CUSTOMER_TIME_WINDOW_FROM": int_min,
+            "CUSTOMER_TIME_WINDOW_TO": int_max,
+            "Ressource_camion": df_camion.loc[index_delivery]['Ressources'],
+        }
+        df_initial_order = pd.concat([df_initial_order, pd.DataFrame.from_dict([dict_camion])])
 
     for delivery in solution:
         delivery.append(0)
 
-    is_solution_time_valid(solution, graph)
-    is_solution_capacity_valid(solution, graph)
-    is_solution_shape_valid(solution, graph)
+    assert (is_solution_valid(solution, graph) is True), 'initial solution should be valid'
 
     return solution
-
-
-def energie(x, graph):
-    """
-    Fonction coût pour le recuit
-
-    Parameters
-    ----------
-    x : solution
-    graph : Graph du problème
-
-    Returns
-    -------
-    somme : Le coût de la solution
-
-    """
-    K = len(x)
-    somme = 0
-    for route in range(0, K):
-        if len(x[route]) > 2:  # si la route n'est pas vide
-            w = graph.nodes[0]['Vehicles']['VEHICLE_VARIABLE_COST_KM'][
-                route]  # On fonction du coût d'utilisation du camion
-            weight_road = sum(
-                [graph[x[route][sommet]][x[route][sommet + 1]]['weight'] for sommet in range(0, len(x[route]) - 1)])
-            somme += w * weight_road
-    return somme
-
-
-# A ADAPTER DANS LA CLASSE
-def energie_part(x, G, camion):
-    """
-    Fonction coût partielle pour le recuit qui calcule uniquement le coût d'un trajet uniquement
-
-    Parameters
-    ----------
-    x : solution
-    G : Graph du problème
-    camion : camion à évaluer
-    Returns
-    -------
-    somme : Le coût de la solution partielle
-
-    """
-    if len(x) > 2:  # si la route n'est pas vide
-        w = G.nodes[0]['Vehicles']['VEHICLE_VARIABLE_COST_KM'][camion]  # On fonction du coût d'utilisation du camion
-        somme = sum([G[x[sommet]][x[sommet + 1]]['weight'] for sommet in range(0, len(x) - 1)])
-        somme += w * somme  # facteur véhicule
-        return somme
-    else:
-        return 0

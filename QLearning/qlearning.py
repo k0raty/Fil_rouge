@@ -1,24 +1,32 @@
 """ Import librairies """
 from copy import deepcopy
+import numpy as np
+from tqdm import tqdm
 
-""" Import utilities """
-from Utility.common import *
-from Utility.validator import *
+from Utility.common import compute_fitness
+from Utility.validator import is_solution_valid
 from voisinage import *
+from Metaheuristics.GeneticAlgorithm.genetic_algorithm import GeneticAlgorithm
+from Utility.database import Database
+from Utility.plotter import plot_solution
 
 
 class Qlearning:
     NBR_OF_ACTION = 8
+
     solution = []
+    fitness_evolution = []
     fitness = 0
 
-    def __init__(self, graph, cost_matrix, initial_solution, max_iter=30, epsilon=0.8, alpha=0.1, gamma=0.9):
-        # TODO : Replace the defaults values taken from the lectures by more efficient values
-        self.MAX_ITER = max_iter
+    def __init__(self, graph=None, max_iteration=30, epsilon=0.8, alpha=0.1, gamma=0.9):
+        if graph is None:
+            database = Database()
+            graph = database.Graph
+
+        # TODO: Replace the defaults values taken from the lectures by more efficient values
+        self.MAX_ITERATION = max_iteration
 
         self.Graph = graph
-        self.cost_matrix = cost_matrix
-        self.initial_solution = initial_solution
 
         self.Q = np.zeros((self.NBR_OF_ACTION, self.NBR_OF_ACTION))
 
@@ -35,60 +43,89 @@ class Qlearning:
     -------
     """
 
-    def main(self):
+    def main(self, initial_solution=None):
+        if initial_solution is None:
+            ga = GeneticAlgorithm(graph=self.Graph)
+            ga.main()
+            initial_solution = ga.solution
+
         self.init_qtable()
 
+        self.fitness_evolution = []
         is_improving = True
         no_improvement = 0
 
-        current_solution = self.initial_solution
-        best_solution = self.initial_solution
-        best_solution_fitness = compute_fitness(best_solution, self.Graph)
+        best_solution = initial_solution
+        current_solution = initial_solution
 
-        history = [best_solution_fitness]
-        number_of_round = 1
+        best_fitness = compute_fitness(best_solution, self.Graph)
 
-        while is_improving:
+        iteration = 0
+        progress_bar = tqdm(desc='Q-Learning', total=self.MAX_ITERATION, colour='green')
+
+        while is_improving and self.is_fitness_evolving():
+            iteration += 1
+
+            reward = 0
+            visited_states = []
+
             next_state = rd.randint(0, self.NBR_OF_ACTION - 1)
-            modified_solution = perform_action(next_state, current_solution)
+            new_solution = perform_action(next_state, current_solution)
 
-            if is_solution_valid(modified_solution, self.Graph):
-                current_solution = modified_solution
+            visited_states.append(next_state)
+
+            if is_solution_valid(new_solution, self.Graph):
+                current_solution = new_solution
 
             current_solution_fitness = compute_fitness(current_solution, self.Graph)
 
-            if current_solution_fitness < best_solution_fitness:
+            if current_solution_fitness < best_fitness:
                 best_solution = current_solution
-                best_solution_fitness = current_solution_fitness
-                history.append(best_solution_fitness)
+                best_fitness = current_solution_fitness
+                reward = best_fitness
             else:
-                states_visited_count = 1
-                visited_state = [next_state]
-                list_solution = []
+                is_stuck = False
 
-                for index_action in range(self.NBR_OF_ACTION):
-                    if next_state == index_action:
-                        continue
+                while is_improving and not is_stuck:
+                    if no_improvement == 0:
+                        state = next_state
+                        next_state = self.epsilon_greedy(state)
+                    else:
+                        next_state = rd.randint(0, self.NBR_OF_ACTION - 1)
 
-                    solution_dict = self.state_goal_enhancement(next_state, index_action, states_visited_count,
-                                                                visited_state, current_solution,
-                                                                no_improvement, best_solution,
-                                                                best_solution_fitness, is_improving)
-                    list_solution.append(solution_dict)
+                    current_solution = perform_action(next_state, current_solution)
+                    current_solution_fitness = compute_fitness(current_solution, self.Graph)
 
-                for index_solution in range(len(list_solution)):
-                    if list_solution[index_solution][1] < best_solution_fitness:
-                        best_solution = list_solution[index_solution][0]
-                        best_solution_fitness = list_solution[index_solution][1]
-                        is_improving = list_solution[index_solution][3]
-                        self.Q = list_solution[index_solution][2]
+                    if next_state not in visited_states:
+                        visited_states.append(next_state)
 
-                        print('fitness {}'.format(best_solution_fitness))
+                    if current_solution_fitness < best_fitness:
+                        best_solution = current_solution
+                        best_fitness = current_solution_fitness
 
-                number_of_round += 1
-                self.epsilon = self.compute_epsilon(number_of_round)
+                        is_improving = True
+                        no_improvement = 0
+                        reward += best_fitness
+                        self.Q = self.compute_qtable(state, next_state, reward)
+                    else:
+                        no_improvement += 1
 
-        return best_solution
+                        if no_improvement > self.MAX_ITERATION and len(visited_states) == self.NBR_OF_ACTION:
+                            is_improving = False
+                            is_stuck = True
+
+                        elif no_improvement > self.MAX_ITERATION:
+                            is_stuck = True
+
+                self.epsilon = self.compute_epsilon(iteration)
+
+            self.fitness_evolution.append(best_fitness)
+            progress_bar.update(1)
+
+        self.solution = best_solution
+        self.fitness = best_fitness
+
+        plot_solution(self.solution)
 
     """
     Init the Q matrix with random values
@@ -169,134 +206,23 @@ class Qlearning:
         return qtable
 
     def compute_epsilon(self, nbr_of_iteration):
-        decay_rate = 1 / (1 + sqrt(nbr_of_iteration))
+        decay_rate = 1 / (1 + np.sqrt(nbr_of_iteration))
         return self.epsilon * decay_rate
 
-    @staticmethod
-    def fitness_change(history):
-        if len(history) < 5:
+    def is_fitness_evolving(self):
+        if len(self.fitness_evolution) < 5:
             return True
 
-        return history[-1] != history[-2] or history[-1] != history[-3]
+        last_fitness = self.fitness_evolution[-1]
 
-    """
-    """
+        index = len(self.fitness_evolution) - 2
 
-    def state_goal_enhancement(self, next_state, state_goal, states_visited_count, visited_state, current_solution,
-                               no_improvement, best_solution, best_solution_fitness, is_improving):
-        reward = 0
-        qtable = deepcopy(self.Q)
+        while index >= 0:
+            fitness = self.fitness_evolution[index]
 
-        while next_state != state_goal:
-            if no_improvement == 0:
-                state = next_state
-                next_state = self.epsilon_greedy(state)
-            else:
-                next_state = rd.randint(0, self.NBR_OF_ACTION - 1)
+            if fitness != last_fitness:
+                return True
 
-            modified_solution = perform_action(next_state, current_solution)
+            index -= 1
 
-            if is_solution_valid(modified_solution, self.Graph):
-                current_solution = modified_solution
-                current_solution_fitness = compute_fitness(current_solution, self.Graph)
-            else:
-                current_solution_fitness = best_solution_fitness + 1
-
-            visited_state.append(next_state)
-
-            print('best fitness', best_solution_fitness)
-            print('current fitness', current_solution_fitness)
-
-            if best_solution_fitness > current_solution_fitness:
-                best_solution = current_solution
-                best_solution_fitness = current_solution_fitness
-                reward = reward + current_solution_fitness
-                no_improvement = 0
-                qtable = self.compute_qtable(state, next_state, reward)
-            else:
-                no_improvement += 1
-
-                if state in visited_state:
-                    states_visited_count += 1
-
-                if no_improvement > self.MAX_ITER and states_visited_count == self.NBR_OF_ACTION:
-                    is_improving = False
-
-        return [best_solution, best_solution_fitness, qtable, is_improving]
-
-    def adaptive_local_search_qlearning(self):
-        self.init_qtable()
-
-        iteration = 0
-        is_improving = True
-        no_improvement = 0
-
-        best_solution = self.initial_solution
-        current_solution = self.initial_solution
-
-        best_solution_fitness = compute_fitness(best_solution, self.Graph)
-
-        while is_improving:
-            iteration += 1
-            print('iteration qlearning {}, best fitness {}'.format(iteration, best_solution_fitness))
-
-            reward = 0
-            visited_states = []
-
-            next_state = rd.randint(0, self.NBR_OF_ACTION - 1)
-            new_solution = perform_action(next_state, current_solution)
-
-            visited_states.append(next_state)
-
-            if is_solution_valid(new_solution, self.Graph):
-                current_solution = new_solution
-
-            current_solution_fitness = compute_fitness(current_solution, self.Graph)
-
-            if current_solution_fitness < best_solution_fitness:
-                best_solution = current_solution
-                best_solution_fitness = current_solution_fitness
-                reward = best_solution_fitness
-            else:
-                is_stuck = False
-
-                while is_improving and not is_stuck:
-                    if no_improvement == 0:
-                        state = next_state
-                        next_state = self.epsilon_greedy(state)
-                    else:
-                        next_state = rd.randint(0, self.NBR_OF_ACTION - 1)
-
-                    current_solution = perform_action(next_state, current_solution)
-                    current_solution_fitness = compute_fitness(current_solution, self.Graph)
-
-                    if next_state not in visited_states:
-                        visited_states.append(next_state)
-
-                    if current_solution_fitness < best_solution_fitness:
-                        best_solution = current_solution
-                        best_solution_fitness = current_solution_fitness
-
-                        is_improving = True
-                        no_improvement = 0
-                        reward += best_solution_fitness
-                        self.Q = self.compute_qtable(state, next_state, reward)
-                    else:
-                        no_improvement += 1
-
-                        if no_improvement > self.MAX_ITER and len(visited_states) == self.NBR_OF_ACTION:
-                            print('no improvement : {}'.format(no_improvement))
-                            is_improving = False
-                            is_stuck = True
-
-                        elif no_improvement > self.MAX_ITER:
-                            is_stuck = True
-
-                self.epsilon = self.compute_epsilon(iteration)
-
-            print('current best solution fitness : {}'.format(best_solution_fitness))
-
-        self.solution = best_solution
-        self.fitness = best_solution_fitness
-
-        print('Best solution fitness {}'.format(self.fitness))
+        return False

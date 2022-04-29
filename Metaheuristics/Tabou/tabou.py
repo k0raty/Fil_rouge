@@ -31,16 +31,13 @@ class Tabou:
     ----------
     """
 
-    def __init__(self, graph=None, max_iteration=20):
+    def __init__(self, graph=None, max_iteration=100):
         if graph is None:
             database = Database()
             graph = database.Graph
 
         self.Graph = graph
-
         self.MAX_ITERATION = max_iteration
-        self.NBR_OF_CUSTOMER = len(graph) - 1
-        self.NBR_OF_VEHICLE = len(graph.nodes[0]['Vehicles'])
 
     """
     Apply the tabou algorithm to improve an initial solution over a maximum number of iterations 
@@ -59,7 +56,8 @@ class Tabou:
 
     def main(self, initial_solution=None):
         if initial_solution is None:
-            initial_solution = generate_initial_solution(self.Graph)
+            # initial_solution = generate_initial_solution(self.Graph)
+            initial_solution = pick_valid_solution()
 
             if not is_solution_valid(initial_solution, self.Graph):
                 initial_solution = pick_valid_solution()
@@ -71,13 +69,14 @@ class Tabou:
         iteration = 0
         progress_bar = tqdm(desc='Tabou algorithm', total=self.MAX_ITERATION, colour='green')
 
-        while iteration < self.MAX_ITERATION:
+        while iteration < self.MAX_ITERATION and self.is_fitness_evolving():
             self.solution, self.fitness = self.find_best_neighbor(self.solution)
             self.fitness_evolution.append(self.fitness)
 
+            iteration += 1
             progress_bar.update(1)
 
-        plot_solution(self.solution, self.Graph)
+        plot_solution(self.solution, self.Graph, title='Tabou solution')
 
     """
     Find the best solution in the close neighborhood of the given solution
@@ -154,3 +153,21 @@ class Tabou:
             inversion_couple = (index_delivery_i, index_delivery_j, summit_i, summit_j)
 
         return neighbor, inversion_couple
+
+    def is_fitness_evolving(self):
+        if len(self.fitness_evolution) < 5:
+            return True
+
+        last_fitness = self.fitness_evolution[-1]
+
+        index = len(self.fitness_evolution) - 2
+
+        while index >= 0:
+            fitness = self.fitness_evolution[index]
+
+            if fitness != last_fitness:
+                return True
+
+            index -= 1
+
+        return False

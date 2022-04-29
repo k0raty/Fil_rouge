@@ -1,6 +1,5 @@
 """ Import librairies """
 from numpy import mean, argmin
-import matplotlib.pyplot as plt
 import pandas as pd
 import random as rd
 from copy import deepcopy
@@ -36,17 +35,15 @@ class GeneticAlgorithm:
     ----------
     """
 
-    def __init__(self, graph=None, max_iteration=20):
+    def __init__(self, graph=None, max_iteration=30):
         if graph is None:
             database = Database()
             graph = database.Graph
 
         self.Graph = graph
-
-        self.NBR_OF_CUSTOMER = len(graph) - 1  # the depot is not a customer
         self.NBR_OF_VEHICLE = len(graph.nodes[0]['Vehicles'])
         self.MAX_ITERATION = max_iteration
-        self.PROBA_MUTATION = 1 / self.NBR_OF_CUSTOMER
+        self.PROBA_MUTATION = 1 / (len(graph) - 1)
 
     """
     Run the GeneticAlgorithm
@@ -70,7 +67,7 @@ class GeneticAlgorithm:
         iteration = 0
         progress_bar = tqdm(desc='Genetic algorithm', total=self.MAX_ITERATION, colour='green')
 
-        while iteration < self.MAX_ITERATION and self.fitness_change():
+        while iteration < self.MAX_ITERATION and self.is_fitness_evolving():
             iteration += 1
 
             """ Choose the individuals that survive from the previous generation """
@@ -111,12 +108,12 @@ class GeneticAlgorithm:
 
             population = population_mutated
 
-            """ Display each generation properties """
             fitness_list = []
 
             for individual in population:
                 fitness_list.append(compute_fitness(individual, self.Graph))
 
+            """ Select the best individual in the current generation """
             index_min = argmin(fitness_list)
             self.solution = population[index_min]
             self.fitness_evolution.append(fitness_list[index_min])
@@ -125,7 +122,8 @@ class GeneticAlgorithm:
             progress_bar.update(1)
 
         self.fitness = compute_fitness(self.solution, self.Graph)
-        plot_solution(self.solution, self.Graph)
+
+        plot_solution(self.solution, self.Graph, title='Genetic solution')
 
     """
     Use a stochastic method ("Technique de la roulette") to select individuals from the current generation
@@ -269,25 +267,6 @@ class GeneticAlgorithm:
         return mutated_individual
 
     """
-    Draw the Graph of the sum of the fitness values of the population at every iteration
-    
-    :param iteration: int - the number of the iteration in the algorithm shown
-    :param history: list - the list of the fitness values for each previous iteration
-    """
-
-    @staticmethod
-    def draw_fitness(iteration, history):
-        plt.figure()
-        plt.plot(range(iteration), history)
-
-        plt.xlabel('iteration')
-        plt.ylabel('Mean fitness')
-        plt.title('Evolution of the population mean fitness')
-
-        fig = plt.gcf()
-        plt.show()
-
-    """
     Check that the fitness value is still changing, if no then the return will stop the algorithm in the main function
     
     Parameters
@@ -296,8 +275,22 @@ class GeneticAlgorithm:
     ----------
     """
 
-    def fitness_change(self):
+    def is_fitness_evolving(self):
         if len(self.fitness_evolution) < 5:
             return True
 
-        return self.fitness_evolution[-1] != self.fitness_evolution[-2] or self.fitness_evolution[-1] != self.fitness_evolution[-3]
+        last_fitness = self.fitness_evolution[-1]
+
+        index = len(self.fitness_evolution) - 2
+
+        while index >= 0:
+            fitness = self.fitness_evolution[index]
+
+            if fitness != last_fitness:
+                return True
+
+            index -= 1
+
+        return False
+
+

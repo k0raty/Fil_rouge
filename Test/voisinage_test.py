@@ -6,7 +6,7 @@ solution = [[0,1,2,3,0],[0,4,5,6,0]]
 print(solution)
 print(intra_route_swap(solution))
 print(inter_route_swap(solution))
-print(IntraRouteShift(solution))
+print(intra_route_shift(solution))
 print(inter_route_shift(solution))
 print()
 
