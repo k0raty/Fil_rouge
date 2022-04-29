@@ -129,10 +129,11 @@ class Tabou:
     def find_neighbor(solution: list):
         neighbor = deepcopy(solution)
 
-        nbr_of_delivery = len(solution)
+        index_delivery_i = rd.randint(0, len(solution) - 1)
+        index_delivery_j = rd.randint(0, len(solution) - 1)
 
-        index_delivery_i = rd.randint(0, nbr_of_delivery - 1)
-        index_delivery_j = rd.randint(0, nbr_of_delivery - 1)
+        while index_delivery_j == index_delivery_i:
+            index_delivery_j = rd.randint(0, len(solution) - 1)
 
         delivery_i = solution[index_delivery_i]
         delivery_j = solution[index_delivery_j]
@@ -141,8 +142,8 @@ class Tabou:
         length_delivery_j = len(delivery_j)
 
         if length_delivery_i > 2 and length_delivery_j > 2:
-            index_summit_i = rd.randint(1, length_delivery_i - 1)
-            index_summit_j = rd.randint(1, length_delivery_j - 1)
+            index_summit_i = rd.randint(1, length_delivery_i - 2)
+            index_summit_j = rd.randint(1, length_delivery_j - 2)
 
             summit_i = delivery_i[index_summit_i]
             summit_j = delivery_j[index_summit_j]

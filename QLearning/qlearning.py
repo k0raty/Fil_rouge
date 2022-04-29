@@ -18,6 +18,8 @@ class Qlearning:
     fitness_evolution = []
     fitness = 0
 
+    epsilon = 0
+
     def __init__(self, graph=None, max_iteration=50, epsilon=0.8, alpha=0.1, gamma=0.9):
         if graph is None:
             database = Database()
@@ -30,7 +32,7 @@ class Qlearning:
 
         self.Q = np.zeros((self.NBR_OF_ACTION, self.NBR_OF_ACTION))
 
-        self.epsilon = epsilon
+        self.initial_epsilon = epsilon
         self.alpha = alpha
         self.gamma = gamma
 
@@ -49,10 +51,10 @@ class Qlearning:
             ga.main()
             initial_solution = ga.solution
 
-        self.init_qtable()
+        self.Q = np.zeros((self.NBR_OF_ACTION, self.NBR_OF_ACTION))
+        self.epsilon = self.initial_epsilon
 
         self.fitness_evolution = []
-        is_improving = True
         no_improvement = 0
 
         best_solution = initial_solution
@@ -63,10 +65,9 @@ class Qlearning:
         iteration = 0
         progress_bar = tqdm(desc='Q-Learning', total=self.MAX_ITERATION, colour='green')
 
-        while is_improving and self.is_fitness_evolving():
+        while iteration < self.MAX_ITERATION and self.is_fitness_evolving():
             iteration += 1
 
-            reward = 0
             visited_states = []
 
             next_state = rd.randint(0, self.NBR_OF_ACTION - 1)
@@ -82,14 +83,14 @@ class Qlearning:
             if current_solution_fitness < best_fitness:
                 best_solution = current_solution
                 best_fitness = current_solution_fitness
-                reward = best_fitness
             else:
-                is_stuck = False
+                is_not_stuck = True
 
-                while is_improving and not is_stuck:
+                while is_not_stuck:
+                    current_state = next_state
+
                     if no_improvement == 0:
-                        state = next_state
-                        next_state = self.epsilon_greedy(state)
+                        next_state = self.epsilon_greedy(next_state)
                     else:
                         next_state = rd.randint(0, self.NBR_OF_ACTION - 1)
 
@@ -103,19 +104,15 @@ class Qlearning:
                         best_solution = current_solution
                         best_fitness = current_solution_fitness
 
-                        is_improving = True
                         no_improvement = 0
-                        reward += best_fitness
-                        self.Q = self.compute_qtable(state, next_state, reward)
+                        reward = (10 ** 8) / best_fitness
+
+                        self.Q = self.compute_qtable(current_state, next_state, reward)
                     else:
                         no_improvement += 1
 
                         if no_improvement > self.MAX_ITERATION and len(visited_states) == self.NBR_OF_ACTION:
-                            is_improving = False
-                            is_stuck = True
-
-                        elif no_improvement > self.MAX_ITERATION:
-                            is_stuck = True
+                            is_not_stuck = False
 
                 self.epsilon = self.compute_epsilon(iteration)
 
@@ -126,15 +123,6 @@ class Qlearning:
         self.fitness = best_fitness
 
         plot_solution(self.solution, self.Graph, title='Q-Learning solution')
-
-    """
-    Init the Q matrix with random values
-    """
-
-    def init_qtable(self):
-        for i in range(len(self.Q)):
-            for j in range(len(self.Q[i])):
-                self.Q[i][j] = rd.randint(0, 50)
 
     """
     Select an action to perform that maximize the reward
@@ -154,10 +142,10 @@ class Qlearning:
         reward_max = 0
         next_state = 0
 
-        for i in range(len(self.Q)):
-            if self.Q[current_state - 1][i] > reward_max:
-                reward_max = self.Q[current_state - 1][i]
-                next_state = i
+        for index_state in range(len(self.Q)):
+            if self.Q[current_state][index_state] > reward_max:
+                reward_max = self.Q[current_state][index_state]
+                next_state = index_state
 
         return next_state
 
@@ -201,7 +189,7 @@ class Qlearning:
 
         qtable_max = max(self.Q[next_state - 1])
         increase = self.alpha * (reward + self.gamma * qtable_max - self.Q[state - 1][next_state - 1])
-        qtable[state - 1][next_state - 1] += increase
+        qtable[state - 1][next_state - 1] += np.around(increase, decimals=2)
 
         return qtable
 

@@ -29,12 +29,12 @@ def plot_solution(solution, graph, title='Solution to the VRP', filepath=None):
         label = 'Vehicle n°{} cost : {}'.format(index_delivery, vehicle_cost)
 
         plt.plot(list_x, list_y, label=label, marker='o', markerfacecolor='blue',
-                 markeredgecolor='blue', markersize=1, linestyle='solid', linewidth=0.8,
+                 markeredgecolor='blue', markersize=1.2, linestyle='solid', linewidth=0.8,
                  color=colors[index_delivery],
                  )
 
     depot = graph.nodes[0]
-    plt.plot(depot['pos'][0], depot['pos'][1], 'rs', markersize=1.2)
+    plt.plot(depot['pos'][0], depot['pos'][1], 'rs', markersize=1.5)
 
     plt.xlabel('coordinate x (in km)')
     plt.ylabel('coordinate y (in km)')
@@ -56,13 +56,13 @@ Draw the Graph of the sum of the fitness values of the population at every itera
 """
 
 
-def plot_fitness(iteration, history, title='Fitness evolution', filepath=None):
+def plot_fitness(history, title='Fitness evolution', filepath=None):
     plt.figure()
 
-    plt.plot(range(iteration), history)
+    plt.plot(list(range(len(history))), history)
 
-    plt.xlabel('iteration')
-    plt.ylabel('Mean fitness')
+    plt.xlabel('Iteration')
+    plt.ylabel('Fitness')
     plt.title(title)
 
     plt.show()
