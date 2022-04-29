@@ -99,7 +99,7 @@ class Qlearning:
                     if next_state not in visited_states:
                         visited_states.append(next_state)
 
-                    if current_solution_fitness < best_fitness:
+                    if current_solution_fitness < best_fitness and is_solution_valid(current_solution, self.Graph):
                         best_solution = current_solution
                         best_fitness = current_solution_fitness
 
@@ -125,7 +125,7 @@ class Qlearning:
         self.solution = best_solution
         self.fitness = best_fitness
 
-        plot_solution(self.solution, self.Graph)
+        plot_solution(self.solution, self.Graph, title='Q-Learning solution')
 
     """
     Init the Q matrix with random values

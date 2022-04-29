@@ -22,13 +22,13 @@ Returns
 
 
 def is_solution_time_valid(solution: list, graph) -> bool:
-    return True
+    # TODO: take into account the time constraints, with a dataset that makes them matchable
 
-    for index_delivery in range(len(solution)):
-        delivery = solution[index_delivery]
+    # for index_delivery in range(len(solution)):
+    #    delivery = solution[index_delivery]
 
-        if not is_delivery_time_valid(delivery, graph):
-            return False
+    #    if not is_delivery_time_valid(delivery, graph):
+    #        return False
 
     return True
 

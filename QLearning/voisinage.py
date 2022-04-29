@@ -274,10 +274,12 @@ def perform_action(index_action, solution):
     elif index_action == 5:
         return two_intra_route_shift(solution)
 
-    elif index_action == 6:
-        return remove_smallest_road(solution)
+    # elif index_action == 6:
+    #    return remove_smallest_road(solution)
 
-    elif index_action == 7:
-        return remove_random_road(solution)
+    # elif index_action == 7:
+    #    return remove_random_road(solution)
 
+    # TODO: compensate the actions removing deliveries by actions adding deliveries
     return solution
+
