@@ -18,7 +18,7 @@ class Qlearning:
     fitness_evolution = []
     fitness = 0
 
-    def __init__(self, graph=None, max_iteration=30, epsilon=0.8, alpha=0.1, gamma=0.9):
+    def __init__(self, graph=None, max_iteration=50, epsilon=0.8, alpha=0.1, gamma=0.9):
         if graph is None:
             database = Database()
             graph = database.Graph
@@ -125,7 +125,7 @@ class Qlearning:
         self.solution = best_solution
         self.fitness = best_fitness
 
-        plot_solution(self.solution)
+        plot_solution(self.solution, self.Graph)
 
     """
     Init the Q matrix with random values

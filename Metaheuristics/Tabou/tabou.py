@@ -31,7 +31,7 @@ class Tabou:
     ----------
     """
 
-    def __init__(self, graph=None, max_iteration=100):
+    def __init__(self, graph=None, max_iteration=500):
         if graph is None:
             database = Database()
             graph = database.Graph
