@@ -115,4 +115,4 @@ Finally, you can push on your remote branch :
 
 ``git push``
 
-> *By Florianne, Alexandre, Anthony, Flavian, Hugo, Julien*
+> *By Florianne, Alexandre, Antony, Flavian, Hugo, Julien*
